@@ -220,7 +220,7 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
 
 let fontsReady: Promise<void> | undefined;
 export function loadFonts() {
-  fontsReady ??= Promise.all(['400 40px "Noto Sans JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"'].map(font=>document.fonts.load(font,'美容習慣わたしをいたわる'))).then(()=>document.fonts.ready).then(()=>undefined);
+  fontsReady ??= Promise.all(['400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"'].map(font=>document.fonts.load(font,'美容習慣わたしをいたわる'))).then(()=>document.fonts.ready).then(()=>undefined);
   return fontsReady;
 }
 export async function loadImage(src: string): Promise<HTMLImageElement> {
@@ -230,7 +230,7 @@ export async function renderCanvas(canvas: HTMLCanvasElement, plan: Plan, input:
   // Load all Japanese unicode subsets needed for this particular slide, not just the font family.
   const s=plan.slides[index];const content=[s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
   await loadFonts();
-  await Promise.all(['400 40px "Noto Sans JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
+  await Promise.all(['400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
   const image=asset.image?await loadImage(asset.image):undefined;
   return drawSlide(canvas.getContext('2d')!,plan,input,index,asset,image);
 }
