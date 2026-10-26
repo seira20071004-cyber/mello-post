@@ -1,2 +1,2 @@
-import Studio from '@/components/Studio';
-export default function Page(){return <Studio/>;}
+import PasswordGate from '@/components/PasswordGate';
+export default function Page(){return <PasswordGate/>;}

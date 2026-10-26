@@ -54,7 +54,7 @@ export async function withJob<T>(request: Request, id:string, data:unknown, task
   })();
   state.melloJobs!.set(cacheKey,promise);
   // Retain only in-flight jobs and the last two results; generated images may be large.
-  promise.then(()=>{const timer=setTimeout(()=>state.melloJobs!.delete(cacheKey),120000);timer.unref();},()=>state.melloJobs!.delete(cacheKey));
+  promise.then(()=>{const timer=setTimeout(()=>state.melloJobs!.delete(cacheKey),120000);timer.unref?.();},()=>state.melloJobs!.delete(cacheKey));
   if(state.melloJobs!.size>4){const oldest=state.melloJobs!.keys().next().value;if(oldest)state.melloJobs!.delete(oldest);}
   return promise;
 }
@@ -66,6 +66,7 @@ export function errorResponse(error:unknown) {
 }
 async function record(kind:keyof Pick<Usage,'text'|'image'|'review'>,ok:boolean,usage?:{input_tokens?:number;output_tokens?:number}) {
   const path=process.env.USAGE_LOG_PATH || '.data/usage.jsonl';
+  if(path==='console'){console.info(JSON.stringify({event:'mello-api-usage',at:new Date().toISOString(),kind,ok,inputTokens:usage?.input_tokens||0,outputTokens:usage?.output_tokens||0}));return;}
   try{await mkdir(dirname(path),{recursive:true});await appendFile(path,JSON.stringify({at:new Date().toISOString(),kind,ok,inputTokens:usage?.input_tokens||0,outputTokens:usage?.output_tokens||0})+'\n',{mode:0o600});}
   catch{console.warn('Usage metadata could not be persisted.');}
 }

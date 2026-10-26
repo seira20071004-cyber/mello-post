@@ -4,6 +4,16 @@ Next.js App Router / React / TypeScript / Tailwind CSSで実装した、テー�
 
 **OpenAIへの実際のサーバーAPI処理を実装しています。固定の操作サンプルは、明示的に選ぶ場合だけ使用し、API失敗時にサンプルへすり替えません。**
 
+## 依頼人向けの共有サイト
+
+公開URL: https://mello-post-studio.seira20071004.chatgpt.site
+
+最初の画面で利用パスワードを入力すると、アカウント登録なしで利用できます。パスワードとOpenAI APIキーは公開先の秘密設定に保存し、GitHubには含めません。利用パスワードは管理者から別途共有してください。
+
+公開版はSites / Cloudflare Workers上のNext.js App Router互換ランタイム（Vinext）で稼働します。このリポジトリはNext.js版のソースで、UI・生成・編集・保存の処理を共有しています。GitHubへのpushだけでは公開サイトの再デプロイは実行されません。公開版の更新はSitesのソース同期・保存・デプロイの手順で行います。
+
+API利用料金は設定済みOpenAIアカウントに発生します。下書きは利用者のブラウザに保存され、別の端末・ブラウザには同期されません。
+
 ## 起動
 
 Node.js 22以上を推奨します（開発環境: Node.js 25.8.1）。

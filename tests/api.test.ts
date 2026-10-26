@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {POST as planPost} from '../app/api/plan/route';
 import {POST as imagePost} from '../app/api/image/route';
 import {GET as configGet} from '../app/api/config/route';
+import {POST as accessPost} from '../app/api/access/route';
 import {samplePlan} from '../lib/sample';
 import {initialInput} from '../lib/schema';
 const input={...initialInput,theme:'40代女性が知っておきたい美容習慣5選'};
@@ -15,6 +16,8 @@ let logDir='';
 beforeEach(async()=>{logDir=await mkdtemp(join(tmpdir(),'mello-test-'));vi.stubEnv('OPENAI_API_KEY','unit-test-credential');vi.stubEnv('APP_PASSWORD','');vi.stubEnv('NODE_ENV','test');vi.stubEnv('USAGE_LOG_PATH',join(logDir,'usage.jsonl'));});
 afterEach(async()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();await rm(logDir,{recursive:true,force:true});});
 describe('real API route contracts with mocked upstream only',()=>{
+  it('unlocks the studio with the app password without calling OpenAI',async()=>{vi.stubEnv('APP_PASSWORD','private-studio-password');const upstream=vi.fn();vi.stubGlobal('fetch',upstream);const response=await accessPost(request('access',{}, {'x-app-password':'private-studio-password'}));expect(response.status).toBe(200);expect(await response.json()).toEqual({ok:true});expect(upstream).not.toHaveBeenCalled();});
+  it('rejects an incorrect access password without exposing it',async()=>{vi.stubEnv('APP_PASSWORD','private-studio-password');const response=await accessPost(request('access',{}, {'x-app-password':'incorrect'}));expect(response.status).toBe(401);expect(JSON.stringify(await response.json())).not.toContain('private-studio-password');});
   it('does not expose the key via configuration',async()=>{const data=await (await configGet()).json();expect(data.configured).toBe(true);expect(JSON.stringify(data)).not.toContain('unit-test-credential');});
   it('returns an actionable missing key error without a fake generation',async()=>{vi.stubEnv('OPENAI_API_KEY','');const mock=vi.fn();vi.stubGlobal('fetch',mock);const result=await planPost(request('plan',payload()));expect(result.status).toBe(503);expect((await result.json()).error).toContain('未設定');expect(mock).not.toHaveBeenCalled();});
   it('accepts a loopback Host when Next normalizes the request URL to localhost',async()=>{vi.stubEnv('OPENAI_API_KEY','');const result=await planPost(request('plan',payload(),{host:'127.0.0.1:3000',origin:'http://127.0.0.1:3000'}));expect(result.status).toBe(503);expect((await result.json()).error).toContain('未設定');});

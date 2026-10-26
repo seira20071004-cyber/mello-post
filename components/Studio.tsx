@@ -20,12 +20,12 @@ const examples=['40代女性が知っておきたい美容習慣5選','心地よ
 function Button({children,className='',...props}:React.ButtonHTMLAttributes<HTMLButtonElement>){return <button className={`button ${className}`} {...props}>{children}</button>;}
 function Field({label,hint,children,required=false}:{label:string;hint?:string;children:React.ReactNode;required?:boolean}){return <div className="field"><div className="field-title">{label}{required&&<span className="required">必須</span>}{hint&&<span className="field-hint">{hint}</span>}</div>{children}</div>;}
 
-export default function Studio(){
+export default function Studio({accessPassword=''}:{accessPassword?:string}){
   const [input,setInput]=useState<Input>(initialInput),[plan,setPlan]=useState<Plan|null>(null),[assets,setAssets]=useState<SlideAsset[]>([]);
   const [phase,setPhase]=useState(0),[selected,setSelected]=useState(0),[tab,setTab]=useState<'text'|'image'>('text');
   const [reference,setReference]=useState<string>(),[usage,setUsage]=useState<Usage>(emptyUsage),[config,setConfig]=useState<Config|null>(null);
   const [busy,setBusy]=useState(''),[progress,setProgress]=useState({done:0,total:0}),[error,setError]=useState(''),[toast,setToast]=useState('');
-  const [isSample,setIsSample]=useState(false),[password,setPassword]=useState('');
+  const [isSample,setIsSample]=useState(false),[password,setPassword]=useState(accessPassword);
   const [view,setView]=useState<'editor'|'library'>('editor'),[switching,setSwitching]=useState(false);
   const projectContent=useMemo<ProjectContent>(()=>({input,plan,assets,usage,reference,isSample,phase,selected,tab}),[input,plan,assets,usage,reference,isSample,phase,selected,tab]);
   const library=useProjects(projectContent,view==='editor');
@@ -109,7 +109,7 @@ export default function Studio(){
         {view==='editor'&&previous&&!plan&&!input.theme&&<div className="restore-banner"><Bookmark size={19}/><span>前回の投稿「{previous.title}」が保存されています。</span><button disabled={switching} onClick={()=>void openProject(previous.id)}>続きを開く <ArrowRight size={15}/></button></div>}
         {view==='editor'&&(input.theme.trim()||plan)&&<div className="save-project-bar"><span><Bookmark size={17}/>{library.status||'変更を保存します…'}</span><button className="button" disabled={!!busy||exporting||switching||!library.ready} onClick={()=>void showLibrary()}>{switching?<LoaderCircle size={16} className="spin"/>:<Layers size={16}/>}保存してマイスタジオへ<ArrowRight size={16}/></button></div>}
         {library.failure&&<div className="error-banner" role="alert"><AlertCircle size={20}/><span>{library.failure}</span><button className="button" disabled={switching} onClick={()=>void (library.ready?library.flush():library.refresh().catch(e=>setError((e as Error).message)))}>保存を再試行</button>{library.failure.includes('別のタブ')&&<button className="button" onClick={()=>void library.saveCopy()}>別セットとして保存</button>}</div>}
-        {config?.passwordRequired&&<div className="password-bar"><LockKeyhole size={18}/><label htmlFor="password">スタジオの利用パスワード</label><input id="password" type="password" autoComplete="current-password" placeholder="サーバーで設定したパスワード" value={password} onChange={e=>setPassword(e.target.value)}/><small>この画面を閉じると消去されます</small></div>}
+        {config?.passwordRequired&&!accessPassword&&<div className="password-bar"><LockKeyhole size={18}/><label htmlFor="password">スタジオの利用パスワード</label><input id="password" type="password" autoComplete="current-password" placeholder="サーバーで設定したパスワード" value={password} onChange={e=>setPassword(e.target.value)}/><small>この画面を閉じると消去されます</small></div>}
         {error&&<div className="error-banner" role="alert"><AlertCircle size={20}/><span>{error}</span><button className="icon-button" aria-label="エラーを閉じる" onClick={()=>setError('')}><X size={17}/></button></div>}
         {busy&&<div className="progress-panel" role="status" aria-live="polite"><LoaderCircle className="spin" size={24}/><div><strong>{busy}</strong><p>{progress.total?`${progress.done} / ${progress.total}枚 完了 · 1枚ずつ大切に作っています。`:'文章の構成と表現を確認しています。しばらくお待ちください。'}</p>{progress.total>0&&<progress value={progress.done} max={progress.total}/>}</div>{progress.total>0&&<Button onClick={()=>{stop.current=true;setToast('処理中の1枚が終わったら停止します');}}>この1枚で停止</Button>}</div>}
 
