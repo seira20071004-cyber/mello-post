@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "established_on": "2026-10-27",
+  "description": "First user-accepted stable baseline. Application code is unchanged by the baseline documentation commit.",
+  "github_repository": "https://github.com/seira20071004-cyber/mello-post",
+  "github_branch": "main",
+  "github_tag": "v1.0.0",
+  "application_source_commit": "32a873ff4319ae0d80502e6ad98454570cfd2fc6",
+  "hosting": {
+    "provider": "Sites / Cloudflare Workers",
+    "url": "https://mello-post-studio.seira20071004.chatgpt.site",
+    "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
+    "saved_version_number": 4,
+    "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_7e7ccd8b6cfc8191b600366f04caf218",
+    "source_commit": "ec002f1268450a971d3cdf7a5721583c3f1f3862",
+    "deployment_id": "appgdep_6adf696af8c08191996f3f5060bc7af0"
+  },
+  "verification": {
+    "automated_tests_passed": 99,
+    "typecheck": "passed",
+    "nextjs_build": "passed",
+    "hosting_build": "passed",
+    "live_generation": "story and information modes verified",
+    "browser_editing_interactions": "not verified"
+  },
+  "data_storage": "Browser IndexedDB; not backed up by Git tags. Current stored project schema version: 2.",
+  "secrets": "Managed separately; no credentials stored in this manifest.",
+  "release_policy": "Develop and preview first. Publish only after explicit approval of the reviewed change."
+}

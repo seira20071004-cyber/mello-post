@@ -4,6 +4,14 @@ Next.js App Router / React / TypeScript / Tailwind CSSで実装した、テー�
 
 **OpenAIへの実際のサーバーAPI処理を実装しています。固定の操作サンプルは、明示的に選ぶ場合だけ使用し、API失敗時にサンプルへすり替えません。**
 
+## 安定版と、今後の開発方針
+
+現在の基準は **v1.0.0**。`main` は確認済みの安定版、`develop` は次の改善を試す場所です。**開発・ローカル確認の後、利用者から明示的な公開OKがある場合だけ公開サイトを更新します。** GitHubのCIに自動公開処理はありません。
+
+- [しくみと開発・確認・復元の手順](docs/しくみと開発の進め方.md)
+- [v1.0.0のコード・公開バージョン対応表](docs/releases/v1.0.0.json)
+- [公開版の変更履歴](CHANGELOG.md)
+
 ## 依頼人向けの共有サイト
 
 公開URL: https://mello-post-studio.seira20071004.chatgpt.site
