@@ -24,3 +24,8 @@ describe('saved project sets',()=>{
   it('rejects broken slide/asset associations without replacing stored data',async()=>{const original=await saveProject(project(),0);await expect(saveProject({...original,plan:samplePlan,assets:[]},original.revision)).rejects.toThrow('数が一致');expect((await readProject('first')).plan).toBeNull();});
   it('does not let a delayed thumbnail replace a newer preview or change the project revision',async()=>{const p=await saveProject(project(),0,'original');await saveProject(p,p.revision,'new-preview');await cacheProjectThumbnail('first',1,'outdated-preview');expect((await listProjects())[0].thumbnail).toBe('new-preview');await cacheProjectThumbnail('first',2,'current-preview');expect((await listProjects())[0].thumbnail).toBe('current-preview');expect((await readProject('first')).revision).toBe(2);});
 });
+
+describe('format and engagement compatibility',()=>{
+  it('keeps older stored sets in 9:16 when no format was saved',async()=>{const p=project() as unknown as Record<string,unknown>;const oldInput={...project().input};delete (oldInput as Partial<typeof oldInput>).aspectRatio;p.input=oldInput;await saveProject(p as unknown as StudioProject,0);expect((await readProject('first')).input.aspectRatio).toBe('9:16');});
+  it('preserves the chosen format and follow topic after reopening',async()=>{const p=project();p.input.aspectRatio='1:1';p.input.accountTopic='親子のコミュニケーション';await saveProject(p,0);expect((await readProject('first')).input).toMatchObject({aspectRatio:'1:1',accountTopic:'親子のコミュニケーション'});});
+});

@@ -1,5 +1,6 @@
 import type { Input, Plan, SlideAsset } from './schema';
 import { tokens, readableInk } from './templates';
+import {canvasSize} from './formats';
 export const WIDTH = 1080, HEIGHT = 1920;
 export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number};
 type Ctx = CanvasRenderingContext2D;
@@ -56,13 +57,13 @@ function botanical(ctx: Ctx, input: Input, index: number) {
     ctx.fillStyle=t.accent;ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();ctx.restore();
   } ctx.restore();
 }
-export function drawSlide(ctx: Ctx, plan: Plan, input: Input, index: number, asset: SlideAsset, image?: CanvasImageSource): RenderReport {
+function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asset: SlideAsset, image?: CanvasImageSource): RenderReport {
   const report: RenderReport={warnings:[],width:WIDTH,height:HEIGHT,minFontSize:200};
   const s=plan.slides[index], t=tokens(input), scale=asset.fontScale || 1;
   ctx.canvas.width=WIDTH;ctx.canvas.height=HEIGHT;ctx.clearRect(0,0,WIDTH,HEIGHT);
   botanical(ctx,input,index);
   const cover=s.layout==='cover', summary=s.layout==='summary';
-  const imageY=cover?1020:summary?1160:s.itemIds.length===2?1450:1150;
+  const imageY=cover?1020:summary&&plan.followCTA?1340:summary?1160:s.itemIds.length===2?1450:1150;
   if(image) {
     const im=image as HTMLImageElement;const iw=im.naturalWidth || im.width, ih=im.naturalHeight || im.height;
     const h=HEIGHT-imageY, ratio=Math.max(WIDTH/iw,h/ih);const sw=WIDTH/ratio,sh=h/ratio;
@@ -71,7 +72,7 @@ export function drawSlide(ctx: Ctx, plan: Plan, input: Input, index: number, ass
   }
   ctx.fillStyle=t.bg;ctx.fillRect(0,0,WIDTH,imageY);
   ctx.strokeStyle=t.line;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(90,130);ctx.lineTo(990,130);ctx.stroke();
-  ctx.font='500 25px "Noto Sans JP"';ctx.fillStyle=t.muted;ctx.textBaseline='top';ctx.fillText('A LITTLE CARE, EVERY DAY',92,81);
+  ctx.font='500 25px "Noto Sans JP"';ctx.fillStyle=t.muted;ctx.textBaseline='top';ctx.fillText('IDEAS FOR YOUR EVERYDAY',92,81);
   ctx.textAlign='right';ctx.fillText(`${String(index+1).padStart(2,'0')} / ${String(plan.slides.length).padStart(2,'0')}`,988,81);ctx.textAlign='left';
   if(cover) {
     block(ctx,s.emphasis,94,198,880,100,32,'Noto Sans JP',t.muted,report,500);
@@ -91,18 +92,78 @@ export function drawSlide(ctx: Ctx, plan: Plan, input: Input, index: number, ass
         y+=370;
       });
       block(ctx,s.body,94,y+14,880,120,32*scale,'Noto Sans JP',t.muted,report);
-    } else block(ctx,s.body,96,565,880,430,46*scale,'Noto Sans JP',t.ink,report);
+    } else block(ctx,s.body,96,565,880,plan.followCTA?300:430,46*scale,'Noto Sans JP',t.ink,report);
     if(summary) {
-      round(ctx,90,1018,900,98,49,t.accent);
-      block(ctx,s.emphasis,130,1043,820,60,34*scale,'Noto Sans JP',readableInk(t.accent),report,500);
+      const bandY=plan.followCTA?1220:1018;
+      if(plan.followCTA){round(ctx,90,920,900,266,38,t.paper);block(ctx,plan.followCTA,126,950,828,212,38*scale,'Noto Sans JP',t.ink,report);}
+      round(ctx,90,bandY,900,98,49,t.accent);
+      block(ctx,s.emphasis,130,bandY+25,820,60,34*scale,'Noto Sans JP',readableInk(t.accent),report,500);
     } else {
       const y=imageY-32;round(ctx,90,y,900,84,42,t.paper);
       block(ctx,s.emphasis,124,y+18,832,53,30*scale,'Noto Sans JP',t.ink,report,500);
     }
   }
-  round(ctx,88,1794,904,70,35,t.paper);ctx.font='400 25px "Noto Sans JP"';ctx.fillStyle=t.ink;ctx.textBaseline='top';
-  ctx.fillText(summary?'保存して、いつでも見返せるように':'自分のペースで、心地よい毎日へ',116,1813);
-  ctx.textAlign='right';ctx.fillText(summary?'♡':'SWIPE  →',961,1813);ctx.textAlign='left';
+  round(ctx,88,1760,904,112,30,t.paper);
+  block(ctx,summary?'保存して、いつでも見返せるように':s.nextTeaser||'次のスライドへ →',116,1774,850,84,27,'Noto Sans JP',t.ink,report);
+  return report;
+}
+export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource):RenderReport{
+  const size=canvasSize(input);
+  if(size.height===1920)return drawLegacySlide(ctx,plan,input,index,asset,image);
+  const H=size.height,W=size.width,t=tokens(input),s=plan.slides[index],scale=asset.fontScale||1;
+  const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200};
+  ctx.canvas.width=W;ctx.canvas.height=H;ctx.clearRect(0,0,W,H);
+  const cover=s.layout==='cover',summary=s.layout==='summary',square=H===1080;
+  const margin=68,bodyWidth=W-margin*2,footerY=H-146;
+  ctx.fillStyle=t.bg;ctx.fillRect(0,0,W,H);
+  const gradient=ctx.createLinearGradient(0,H*.45,W,H);gradient.addColorStop(0,t.paper);gradient.addColorStop(1,t.line);ctx.fillStyle=gradient;ctx.fillRect(0,H*.45,W,H*.55);
+  if(image){
+    const im=image as HTMLImageElement,iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height;
+    const imageY=cover?H*.53:summary?H*.60:H*.40,h=H-imageY,ratio=Math.max(W/iw,h/ih),sw=W/ratio,sh=h/ratio;
+    ctx.save();ctx.globalAlpha=cover?.95:summary?.28:.16;ctx.drawImage(image,(iw-sw)/2,(ih-sh)/2,sw,sh,0,imageY,W,h);ctx.restore();
+    const fade=ctx.createLinearGradient(0,imageY,0,imageY+160);fade.addColorStop(0,t.bg);fade.addColorStop(1,t.bg+'00');ctx.fillStyle=fade;ctx.fillRect(0,imageY,W,160);
+  }else{
+    ctx.save();ctx.translate(W*.77,H*.77);ctx.strokeStyle=t.accent;ctx.globalAlpha=.2;ctx.lineWidth=4;
+    for(let n=0;n<3;n++){ctx.beginPath();ctx.ellipse(0,0,92+n*48,110+n*50,n*.5,0,Math.PI*2);ctx.stroke();}ctx.restore();
+  }
+  ctx.font='500 23px "Noto Sans JP"';ctx.fillStyle=t.muted;ctx.textBaseline='top';ctx.fillText('IDEAS FOR YOUR EVERYDAY',margin,43);ctx.textAlign='right';ctx.fillText(`${String(index+1).padStart(2,'0')} / ${String(plan.slides.length).padStart(2,'0')}`,W-margin,43);ctx.textAlign='left';
+  ctx.strokeStyle=t.line;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(margin,91);ctx.lineTo(W-margin,91);ctx.stroke();
+  if(cover){
+    block(ctx,s.emphasis,margin,132,bodyWidth,66,31,'Noto Sans JP',t.muted,report,500);
+    const titleY=226,titleH=square?292:330;
+    block(ctx,s.title,margin,titleY,bodyWidth,titleH,(square?80:88)*scale,t.font,t.ink,report,600);
+    const y=titleY+titleH+25,h=square?164:198;
+    round(ctx,margin-12,y-12,bodyWidth+24,h+24,24,t.paper);
+    block(ctx,s.body,margin+8,y+4,bodyWidth-16,h-8,38*scale,'Noto Sans JP',t.ink,report);
+  }else if(summary){
+    const titleH=square?188:232;
+    block(ctx,s.title,margin,142,bodyWidth,titleH,66*scale,t.font,t.ink,report,600);
+    const bodyY=142+titleH+28,bodyH=square?210:260;
+    block(ctx,s.body,margin,bodyY,bodyWidth,bodyH,38*scale,'Noto Sans JP',t.ink,report);
+    const ctaY=bodyY+bodyH+24,ctaH=Math.max(150,footerY-ctaY-25);
+    round(ctx,margin,ctaY,bodyWidth,ctaH,t.radius,t.paper);
+    block(ctx,plan.followCTA||s.emphasis,margin+26,ctaY+22,bodyWidth-52,ctaH-42,35*scale,'Noto Sans JP',t.ink,report,500);
+  }else{
+    const two=s.itemIds.length===2,titleTop=square&&two?115:137;
+    const titleH=square?(two?104:144):180;
+    block(ctx,s.title,margin,titleTop,bodyWidth,titleH,60*scale,t.font,t.ink,report,600);
+    const items=s.itemIds.map(id=>plan.items.find(item=>item.id===id)).filter(Boolean);
+    const startY=titleTop+titleH+(square&&two?18:22),subtitleH=square?(two?70:160):112,gap=16;
+    const available=footerY-startY-subtitleH-(square&&two?20:39);
+    const cardH=items.length===2?(available-gap)/2:Math.min(available,square?330:410);
+    items.forEach((item,n)=>{if(!item)return;const y=startY+n*(cardH+gap);
+      round(ctx,margin,y,bodyWidth,cardH,t.radius,t.paper);
+      round(ctx,margin+22,y+23,56,56,28,t.accent);ctx.fillStyle=readableInk(t.accent);ctx.font='500 28px "Noto Sans JP"';ctx.textBaseline='top';ctx.fillText(String(item.id).padStart(2,'0'),margin+31,y+35);
+      block(ctx,item.title,margin+98,y+23,bodyWidth-124,100,(items.length===2?38:43)*scale,t.font,t.ink,report,600);
+      block(ctx,item.body,margin+26,y+124,bodyWidth-52,cardH-143,(items.length===2?34:40)*scale,'Noto Sans JP',t.ink,report);
+    });
+    if(items.length){const textY=startY+items.length*cardH+Math.max(0,items.length-1)*gap+19;
+      block(ctx,s.body,margin+5,textY,bodyWidth-10,subtitleH,32*scale,'Noto Sans JP',t.muted,report);
+    }else{const h=footerY-startY-40;round(ctx,margin,startY,bodyWidth,h,t.radius,t.paper);block(ctx,s.body,margin+32,startY+36,bodyWidth-64,h-72,44*scale,'Noto Sans JP',t.ink,report);}
+  }
+  const footer=summary?'保存して実践。次のヒントもお楽しみに。':s.nextTeaser||'次のスライドで、続きを読んでみましょう →';
+  round(ctx,margin,footerY,bodyWidth,108,28,summary?t.accent:t.paper);
+  block(ctx,footer,margin+25,footerY+12,bodyWidth-50,84,27,'Noto Sans JP',summary?readableInk(t.accent):t.ink,report,500);
   return report;
 }
 let fontsReady: Promise<void> | undefined;
@@ -115,7 +176,7 @@ export async function loadImage(src: string): Promise<HTMLImageElement> {
 }
 export async function renderCanvas(canvas: HTMLCanvasElement, plan: Plan, input: Input, index: number, asset: SlideAsset) {
   // Load all Japanese unicode subsets needed for this particular slide, not just the font family.
-  const s=plan.slides[index];const content=[s.title,s.body,s.emphasis,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
+  const s=plan.slides[index];const content=[s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
   await loadFonts();
   await Promise.all(['400 40px "Noto Sans JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
   const image=asset.image?await loadImage(asset.image):undefined;

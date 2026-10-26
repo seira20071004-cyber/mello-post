@@ -89,6 +89,10 @@ export async function openai(path:string,body:object|FormData,kind:'text'|'image
 }
 export async function structured<T extends z.ZodType>(schema:T,instructions:string,input:unknown,usage:Usage,kind:'text'|'review'='text'):Promise<z.infer<T>> {
   const jsonSchema=z.toJSONSchema(schema);delete jsonSchema.$schema;
+  // Defaults help load older saved posts; the API schema only declares the
+  // required output fields, without provider-specific default annotations.
+  const stripDefaults=(node:unknown):void=>{if(node&&typeof node==='object'){delete (node as Record<string,unknown>).default;Object.values(node).forEach(stripDefaults);}};
+  stripDefaults(jsonSchema);
   const result=await openai('responses',{model:models().text,instructions,input,text:{format:{type:'json_schema',name:'studio_result',strict:true,schema:jsonSchema}},store:false,max_output_tokens:6500,reasoning:{effort:'low'}},kind,usage);
   if(result.status==='incomplete')throw new AppError('文章が長くなり、生成を完了できませんでした。補足を短くして再試行してください。',502);
   const output=result.output as {type:string;content?:{type:string;text?:string}[]}[] | undefined;

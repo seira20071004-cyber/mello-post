@@ -7,7 +7,7 @@ type Identity={id:string;createdAt:number;revision:number};
 async function thumbnailFor(snapshot:ProjectContent):Promise<string|undefined>{
   if(!snapshot.plan)return;
   const full=document.createElement('canvas');await renderCanvas(full,snapshot.plan,snapshot.input,0,snapshot.assets[0]);
-  const small=document.createElement('canvas');small.width=240;small.height=427;small.getContext('2d')!.drawImage(full,0,0,240,427);return small.toDataURL('image/jpeg',.78);
+  const small=document.createElement('canvas');small.width=240;small.height=Math.round(240*full.height/full.width);small.getContext('2d')!.drawImage(full,0,0,small.width,small.height);return small.toDataURL('image/jpeg',.78);
 }
 export function useProjects(content:ProjectContent,enabled:boolean){
   const [projects,setProjects]=useState<ProjectSummary[]>([]),[ready,setReady]=useState(false),[status,setStatus]=useState(''),[failure,setFailure]=useState('');

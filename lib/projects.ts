@@ -3,7 +3,7 @@ import { inputSchema, planSchema, itemSchema, slideSchema, emptyUsage, type Inpu
 
 export type ProjectContent = {input:Input;plan:Plan|null;assets:SlideAsset[];usage:Usage;reference?:string;isSample:boolean;phase:number;selected:number;tab:'text'|'image'};
 export type StudioProject = ProjectContent & {version:2;id:string;createdAt:number;savedAt:number;revision:number;archived:boolean};
-export type ProjectSummary = Pick<StudioProject,'id'|'createdAt'|'savedAt'|'revision'|'archived'|'isSample'> & {title:string;template:Input['template'];color:string;slideCount:number;imageCount:number;stage:'idea'|'editing'|'ready';thumbnail?:string};
+export type ProjectSummary = Pick<StudioProject,'id'|'createdAt'|'savedAt'|'revision'|'archived'|'isSample'> & {title:string;template:Input['template'];color:string;aspectRatio?:Input['aspectRatio'];slideCount:number;imageCount:number;stage:'idea'|'editing'|'ready';thumbnail?:string};
 
 // Editing may temporarily leave a title or caption blank. Persistence must preserve it;
 // strict publication validation still happens in schema.ts before generation/export.
@@ -21,13 +21,15 @@ const contentSchema=z.object({
 const projectSchema=contentSchema.extend({version:z.literal(2),id:z.string(),createdAt:z.number(),savedAt:z.number(),revision:z.number().int().min(0),archived:z.boolean()});
 
 export function parseProject(value:unknown):StudioProject {
-  const project=projectSchema.parse(value);
+  const raw=value as {input?:{aspectRatio?:string}};
+  const compatible=raw?.input&&!raw.input.aspectRatio?{...raw,input:{...raw.input,aspectRatio:'9:16'}}:value;
+  const project=projectSchema.parse(compatible);
   if(project.plan&&project.assets.length!==project.plan.slides.length)throw new Error('保存された画像とスライドの数が一致しません');
   return project;
 }
 export function summarizeProject(project:StudioProject,thumbnail?:string):ProjectSummary {
   const imageCount=project.assets.filter(a=>a.image).length;
-  return {id:project.id,createdAt:project.createdAt,savedAt:project.savedAt,revision:project.revision,archived:project.archived,isSample:project.isSample,title:project.input.theme.trim()||project.plan?.title||'無題の投稿',template:project.input.template,color:project.input.color,slideCount:project.plan?.slides.length||project.input.count,imageCount,stage:!project.plan?'idea':imageCount===project.plan.slides.length?'ready':'editing',thumbnail};
+  return {id:project.id,createdAt:project.createdAt,savedAt:project.savedAt,revision:project.revision,archived:project.archived,isSample:project.isSample,title:project.input.theme.trim()||project.plan?.title||'無題の投稿',template:project.input.template,color:project.input.color,aspectRatio:project.input.aspectRatio,slideCount:project.plan?.slides.length||project.input.count,imageCount,stage:!project.plan?'idea':imageCount===project.plan.slides.length?'ready':'editing',thumbnail};
 }
 function openDB():Promise<IDBDatabase> {
   return new Promise((resolve,reject)=>{
