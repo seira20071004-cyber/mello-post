@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { inputSchema, planSchema, itemSchema, slideSchema, emptyUsage, type Input, type Plan, type SlideAsset, type Usage } from './schema';
+import { inputSchema, planSchema, itemSchema, slideSchema, emptyUsage, type Input, type Plan, type SlideAsset, type Usage, textBoxSchema } from './schema';
 
 export type ProjectContent = {input:Input;plan:Plan|null;assets:SlideAsset[];usage:Usage;reference?:string;isSample:boolean;phase:number;selected:number;tab:'text'|'image'};
 export type StudioProject = ProjectContent & {version:2;id:string;createdAt:number;savedAt:number;revision:number;archived:boolean};
@@ -9,12 +9,12 @@ export type ProjectSummary = Pick<StudioProject,'id'|'createdAt'|'savedAt'|'revi
 // strict publication validation still happens in schema.ts before generation/export.
 const editablePlanSchema=planSchema.extend({
   title:z.string(),caption:z.string(),
-  items:z.array(itemSchema.extend({title:z.string(),body:z.string()})).min(1).max(16),
+  items:z.array(itemSchema.extend({title:z.string(),body:z.string()})).max(16),
   slides:z.array(slideSchema.extend({title:z.string(),body:z.string(),emphasis:z.string()})).min(3).max(10),
 });
 const contentSchema=z.object({
   input:inputSchema.extend({theme:z.string().max(120)}),plan:editablePlanSchema.nullable(),
-  assets:z.array(z.object({image:z.string().optional(),error:z.string().optional(),fontScale:z.number().min(.5).max(2),sample:z.boolean().optional(),review:z.object({unexpectedText:z.boolean(),anatomyConcern:z.boolean(),styleConcern:z.boolean(),notes:z.array(z.string())}).optional()})),
+  assets:z.array(z.object({image:z.string().optional(),error:z.string().optional(),fontScale:z.number().min(.5).max(2),sample:z.boolean().optional(),textBox:textBoxSchema.optional(),textAlign:z.enum(['left','center']).optional(),textColor:z.enum(['dark','light']).optional(),textSurface:z.enum(['soft','none']).optional(),review:z.object({unexpectedText:z.boolean(),anatomyConcern:z.boolean(),styleConcern:z.boolean(),notes:z.array(z.string())}).optional()})),
   usage:z.object({text:z.number(),image:z.number(),review:z.number(),failed:z.number(),inputTokens:z.number(),outputTokens:z.number()}),
   reference:z.string().optional(),isSample:z.boolean(),phase:z.number().int().min(0).max(2),selected:z.number().int().min(0).max(9),tab:z.enum(['text','image']),
 });

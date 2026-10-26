@@ -9,7 +9,7 @@ import {compositionFor,generationSchema} from '../lib/composition';
 import {drawSlide,wrapText} from '../lib/render';
 import {formats,type AspectRatio} from '../lib/formats';
 import {readableInk,templates} from '../lib/templates';
-const input={...initialInput,theme:'40代女性が知っておきたい美容習慣5選'};
+const input={...initialInput,mode:'info' as const,theme:'40代女性が知っておきたい美容習慣5選'};
 for(const [pkg,family] of [['noto-sans-jp','Noto Sans JP'],['noto-serif-jp','Noto Serif JP']]){
   const dir=`node_modules/@fontsource/${pkg}/files`;
   for(const weight of [400,500,600])GlobalFonts.register(readFileSync(`${dir}/${pkg}-japanese-${weight}-normal.woff2`),family);

@@ -1,6 +1,8 @@
 import type { Input, Plan, SlideAsset } from './schema';
 import { tokens, readableInk } from './templates';
 import {canvasSize} from './formats';
+import {isNarrative} from './modes';
+import {textBoxFor} from './text-layout';
 export const WIDTH = 1080, HEIGHT = 1920;
 export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number};
 type Ctx = CanvasRenderingContext2D;
@@ -109,6 +111,7 @@ function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asse
 }
 export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource):RenderReport{
   const size=canvasSize(input);
+  if(isNarrative(input))return drawReadingSlide(ctx,plan,input,index,asset,image);
   if(size.height===1920)return drawLegacySlide(ctx,plan,input,index,asset,image);
   const H=size.height,W=size.width,t=tokens(input),s=plan.slides[index],scale=asset.fontScale||1;
   const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200};
@@ -166,6 +169,55 @@ export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   block(ctx,footer,margin+25,footerY+12,bodyWidth-50,84,27,'Noto Sans JP',summary?readableInk(t.accent):t.ink,report,500);
   return report;
 }
+
+function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource):RenderReport{
+  const {width:W,height:H}=canvasSize(input),s=plan.slides[index],t=tokens(input),cover=index===0;
+  const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200};
+  ctx.canvas.width=W;ctx.canvas.height=H;ctx.clearRect(0,0,W,H);ctx.fillStyle=t.bg;ctx.fillRect(0,0,W,H);
+  if(image){
+    const im=image as HTMLImageElement,iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height;
+    const ratio=Math.min(W/iw,H/ih),dw=iw*ratio,dh=ih*ratio;
+    // Keep complete faces and props when changing ratio or reusing a square image.
+    ctx.drawImage(image,(W-dw)/2,H-dh,dw,dh);
+  }else{
+    const gr=ctx.createLinearGradient(0,0,W,H);gr.addColorStop(0,t.paper);gr.addColorStop(.52,t.bg);gr.addColorStop(1,t.line);ctx.fillStyle=gr;ctx.fillRect(0,0,W,H);
+    ctx.save();ctx.globalAlpha=.16;ctx.fillStyle=t.accent;
+    for(let n=0;n<4;n++){ctx.beginPath();ctx.ellipse(W*(.63+n*.07),H*(.90-n*.035),85,145,.4+n*.25,0,Math.PI*2);ctx.fill();}ctx.restore();
+  }
+  const box=textBoxFor(input,asset,cover),x=box.x*W,y=box.y*H,w=box.width*W,h=box.height*H;
+  const light=asset.textColor==='light',ink=light?'#ffffff':t.ink;
+  const scale=asset.fontScale||1,align=asset.textAlign||'left';
+  const title=cover?s.title:'',body=s.body;
+  let bodyY=y;
+  function fitReading(text:string,height:number,size:number,weight=400){
+    let actual=Math.round(size),lines:string[]=[];
+    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${t.font}"`;lines=wrapText(ctx,text,w);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=w+8))break;}
+    return {actual:Math.max(32,actual),overflow:actual<32,lines};
+  }
+  const titleFit=title?fitReading(title,body?h*.56:h,76*scale,600):undefined;
+  const titleHeight=titleFit?titleFit.lines.length*titleFit.actual*1.75+(body?28:0):0;
+  const bodyFit=body?fitReading(body,Math.max(1,h-titleHeight),(input.mode==='essay'?42:49)*scale):undefined;
+  const paintedHeight=Math.min(h,titleHeight+(bodyFit?bodyFit.lines.length*bodyFit.actual*1.75:0));
+  if(asset.textSurface!=='none'){
+    // Only wash behind actual lines, leaving the unused area of the artwork visible.
+    ctx.save();ctx.shadowColor=light?'#15131b':'#fffaf5';ctx.shadowBlur=36;
+    round(ctx,x-22,y-24,w+44,paintedHeight+48,24,light?'rgba(20,19,26,.76)':'rgba(255,252,247,.92)');ctx.restore();
+  }
+  function readingBlock(text:string,top:number,height:number,size:number,weight=400){
+    if(!text)return 0;
+    const {actual,lines,overflow}=fitReading(text,height,size,weight);
+    if(overflow)report.warnings.push('文章が表示領域を超えています。文章を短くするか、文字エリアを広げてください。');
+    report.minFontSize=Math.min(report.minFontSize,actual);ctx.font=`${weight} ${actual}px "${t.font}"`;ctx.fillStyle=ink;ctx.textBaseline='top';
+    ctx.save();ctx.beginPath();ctx.rect(x,y,w+8,h);ctx.clip();ctx.textAlign=align;
+    lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+w/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
+    return lines.length*actual*1.75;
+  }
+  if(title)bodyY+=readingBlock(title,y,body?h*.56:h,76*scale,600)+(body?28:0);
+  if(body)readingBlock(body,bodyY,Math.max(1,y+h-bodyY),(input.mode==='essay'?42:49)*scale);
+  // No visible page furniture: the story itself provides the continuation.
+  return report;
+}
+
 let fontsReady: Promise<void> | undefined;
 export function loadFonts() {
   fontsReady ??= Promise.all(['400 40px "Noto Sans JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"'].map(font=>document.fonts.load(font,'美容習慣わたしをいたわる'))).then(()=>document.fonts.ready).then(()=>undefined);
