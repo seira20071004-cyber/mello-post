@@ -3,8 +3,9 @@ import { tokens, readableInk } from './templates';
 import {canvasSize} from './formats';
 import {isNarrative} from './modes';
 import {textBoxFor} from './text-layout';
+import {fontFor,colorFor,surfaceOpacity} from './appearance';
 export const WIDTH = 1080, HEIGHT = 1920;
-export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number};
+export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number; fontOverride?:string; colorOverride?:string};
 type Ctx = CanvasRenderingContext2D;
 const opening = /[（「『【〈《([]$/;
 const closing = /^[、。，．！？：；）』」】〉》\]ーぁぃぅぇぉっゃゅょァィゥェォッャュョ]/;
@@ -28,7 +29,13 @@ export function wrapText(ctx: Pick<Ctx, 'measureText'>, text: string, width: num
 function round(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, fill: string) {
   ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fillStyle=fill; ctx.fill();
 }
+function paper(ctx:Ctx,x:number,y:number,w:number,h:number,r:number,fill:string,asset:SlideAsset){
+  const opacity=surfaceOpacity(asset);if(!opacity)return;
+  ctx.save();ctx.globalAlpha*=opacity;round(ctx,x,y,w,h,r,fill);ctx.restore();
+}
+function appearanceReport(input:Input,asset:SlideAsset):Pick<RenderReport,'fontOverride'|'colorOverride'>{return {fontOverride:asset.textFont&&asset.textFont!=='template'?fontFor(asset,'Noto Sans JP'):undefined,colorOverride:asset.textColor&&asset.textColor!=='dark'?colorFor(input,asset):undefined};}
 function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: number, size: number, font: string, color: string, report: RenderReport, weight=400) {
+  font=report.fontOverride||font;color=report.colorOverride||color;
   let lines: string[]=[]; let actual = Math.round(size); const minimum=Math.min(actual,32);
   for (; actual >= minimum; actual--) {
     ctx.font=`${weight} ${actual}px "${font}"`;
@@ -60,7 +67,7 @@ function botanical(ctx: Ctx, input: Input, index: number) {
   } ctx.restore();
 }
 function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asset: SlideAsset, image?: CanvasImageSource): RenderReport {
-  const report: RenderReport={warnings:[],width:WIDTH,height:HEIGHT,minFontSize:200};
+  const report: RenderReport={warnings:[],width:WIDTH,height:HEIGHT,minFontSize:200,...appearanceReport(input,asset)};
   const s=plan.slides[index], t=tokens(input), scale=asset.fontScale || 1;
   ctx.canvas.width=WIDTH;ctx.canvas.height=HEIGHT;ctx.clearRect(0,0,WIDTH,HEIGHT);
   botanical(ctx,input,index);
@@ -87,7 +94,7 @@ function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asse
       let y=535;
       items.forEach(item=>{
         if(!item)return;
-        round(ctx,88,y,904,350,t.radius,t.paper);
+        paper(ctx,88,y,904,350,t.radius,t.paper,asset);
         round(ctx,118,y+28,64,64,32,t.accent);ctx.fillStyle=readableInk(t.accent);ctx.font='500 32px "Noto Sans JP"';ctx.textBaseline='top';ctx.fillText(String(item.id).padStart(2,'0'),129,y+42);
         block(ctx,item.title,203,y+32,748,104,40*scale,t.font,t.ink,report,600);
         block(ctx,item.body,120,y+136,830,205,(items.length===2?34:40)*scale,'Noto Sans JP',t.ink,report);
@@ -97,15 +104,15 @@ function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asse
     } else block(ctx,s.body,96,565,880,plan.followCTA?300:430,46*scale,'Noto Sans JP',t.ink,report);
     if(summary) {
       const bandY=plan.followCTA?1220:1018;
-      if(plan.followCTA){round(ctx,90,920,900,266,38,t.paper);block(ctx,plan.followCTA,126,950,828,212,38*scale,'Noto Sans JP',t.ink,report);}
+      if(plan.followCTA){paper(ctx,90,920,900,266,38,t.paper,asset);block(ctx,plan.followCTA,126,950,828,212,38*scale,'Noto Sans JP',t.ink,report);}
       round(ctx,90,bandY,900,98,49,t.accent);
       block(ctx,s.emphasis,130,bandY+25,820,60,34*scale,'Noto Sans JP',readableInk(t.accent),report,500);
     } else {
-      const y=imageY-32;round(ctx,90,y,900,84,42,t.paper);
+      const y=imageY-32;paper(ctx,90,y,900,84,42,t.paper,asset);
       block(ctx,s.emphasis,124,y+18,832,53,30*scale,'Noto Sans JP',t.ink,report,500);
     }
   }
-  round(ctx,88,1760,904,112,30,t.paper);
+  paper(ctx,88,1760,904,112,30,t.paper,asset);
   block(ctx,summary?'保存して、いつでも見返せるように':s.nextTeaser||'次のスライドへ →',116,1774,850,84,27,'Noto Sans JP',t.ink,report);
   return report;
 }
@@ -114,7 +121,7 @@ export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   if(isNarrative(input))return drawReadingSlide(ctx,plan,input,index,asset,image);
   if(size.height===1920)return drawLegacySlide(ctx,plan,input,index,asset,image);
   const H=size.height,W=size.width,t=tokens(input),s=plan.slides[index],scale=asset.fontScale||1;
-  const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200};
+  const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200,...appearanceReport(input,asset)};
   ctx.canvas.width=W;ctx.canvas.height=H;ctx.clearRect(0,0,W,H);
   const cover=s.layout==='cover',summary=s.layout==='summary',square=H===1080;
   const margin=68,bodyWidth=W-margin*2,footerY=H-146;
@@ -136,7 +143,7 @@ export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     const titleY=226,titleH=square?292:330;
     block(ctx,s.title,margin,titleY,bodyWidth,titleH,(square?80:88)*scale,t.font,t.ink,report,600);
     const y=titleY+titleH+25,h=square?164:198;
-    round(ctx,margin-12,y-12,bodyWidth+24,h+24,24,t.paper);
+    paper(ctx,margin-12,y-12,bodyWidth+24,h+24,24,t.paper,asset);
     block(ctx,s.body,margin+8,y+4,bodyWidth-16,h-8,38*scale,'Noto Sans JP',t.ink,report);
   }else if(summary){
     const titleH=square?188:232;
@@ -144,7 +151,7 @@ export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     const bodyY=142+titleH+28,bodyH=square?210:260;
     block(ctx,s.body,margin,bodyY,bodyWidth,bodyH,38*scale,'Noto Sans JP',t.ink,report);
     const ctaY=bodyY+bodyH+24,ctaH=Math.max(150,footerY-ctaY-25);
-    round(ctx,margin,ctaY,bodyWidth,ctaH,t.radius,t.paper);
+    paper(ctx,margin,ctaY,bodyWidth,ctaH,t.radius,t.paper,asset);
     block(ctx,plan.followCTA||s.emphasis,margin+26,ctaY+22,bodyWidth-52,ctaH-42,35*scale,'Noto Sans JP',t.ink,report,500);
   }else{
     const two=s.itemIds.length===2,titleTop=square&&two?115:137;
@@ -155,24 +162,24 @@ export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     const available=footerY-startY-subtitleH-(square&&two?20:39);
     const cardH=items.length===2?(available-gap)/2:Math.min(available,square?330:410);
     items.forEach((item,n)=>{if(!item)return;const y=startY+n*(cardH+gap);
-      round(ctx,margin,y,bodyWidth,cardH,t.radius,t.paper);
+      paper(ctx,margin,y,bodyWidth,cardH,t.radius,t.paper,asset);
       round(ctx,margin+22,y+23,56,56,28,t.accent);ctx.fillStyle=readableInk(t.accent);ctx.font='500 28px "Noto Sans JP"';ctx.textBaseline='top';ctx.fillText(String(item.id).padStart(2,'0'),margin+31,y+35);
       block(ctx,item.title,margin+98,y+23,bodyWidth-124,100,(items.length===2?38:43)*scale,t.font,t.ink,report,600);
       block(ctx,item.body,margin+26,y+124,bodyWidth-52,cardH-143,(items.length===2?34:40)*scale,'Noto Sans JP',t.ink,report);
     });
     if(items.length){const textY=startY+items.length*cardH+Math.max(0,items.length-1)*gap+19;
       block(ctx,s.body,margin+5,textY,bodyWidth-10,subtitleH,32*scale,'Noto Sans JP',t.muted,report);
-    }else{const h=footerY-startY-40;round(ctx,margin,startY,bodyWidth,h,t.radius,t.paper);block(ctx,s.body,margin+32,startY+36,bodyWidth-64,h-72,44*scale,'Noto Sans JP',t.ink,report);}
+    }else{const h=footerY-startY-40;paper(ctx,margin,startY,bodyWidth,h,t.radius,t.paper,asset);block(ctx,s.body,margin+32,startY+36,bodyWidth-64,h-72,44*scale,'Noto Sans JP',t.ink,report);}
   }
   const footer=summary?'保存して実践。次のヒントもお楽しみに。':s.nextTeaser||'次のスライドで、続きを読んでみましょう →';
-  round(ctx,margin,footerY,bodyWidth,108,28,summary?t.accent:t.paper);
+  paper(ctx,margin,footerY,bodyWidth,108,28,summary?t.accent:t.paper,asset);
   block(ctx,footer,margin+25,footerY+12,bodyWidth-50,84,27,'Noto Sans JP',summary?readableInk(t.accent):t.ink,report,500);
   return report;
 }
 
 function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource):RenderReport{
   const {width:W,height:H}=canvasSize(input),s=plan.slides[index],t=tokens(input),cover=index===0;
-  const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200};
+  const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200,...appearanceReport(input,asset)};
   ctx.canvas.width=W;ctx.canvas.height=H;ctx.clearRect(0,0,W,H);ctx.fillStyle=t.bg;ctx.fillRect(0,0,W,H);
   if(image){
     const im=image as HTMLImageElement,iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height;
@@ -185,29 +192,30 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     for(let n=0;n<4;n++){ctx.beginPath();ctx.ellipse(W*(.63+n*.07),H*(.90-n*.035),85,145,.4+n*.25,0,Math.PI*2);ctx.fill();}ctx.restore();
   }
   const box=textBoxFor(input,asset,cover),x=box.x*W,y=box.y*H,w=box.width*W,h=box.height*H;
-  const light=asset.textColor==='light',ink=light?'#ffffff':t.ink;
+  const ink=colorFor(input,asset),light=readableInk(ink)==='#241e24',font=fontFor(asset,t.font);
   const scale=asset.fontScale||1,align=asset.textAlign||'left';
   const title=cover?s.title:'',body=s.body;
   let bodyY=y;
   function fitReading(text:string,height:number,size:number,weight=400){
     let actual=Math.round(size),lines:string[]=[];
-    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${t.font}"`;lines=wrapText(ctx,text,w);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=w+8))break;}
+    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=wrapText(ctx,text,w);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=w+8))break;}
     return {actual:Math.max(32,actual),overflow:actual<32,lines};
   }
   const titleFit=title?fitReading(title,body?h*.56:h,76*scale,600):undefined;
   const titleHeight=titleFit?titleFit.lines.length*titleFit.actual*1.75+(body?28:0):0;
   const bodyFit=body?fitReading(body,Math.max(1,h-titleHeight),(input.mode==='essay'?42:49)*scale):undefined;
   const paintedHeight=Math.min(h,titleHeight+(bodyFit?bodyFit.lines.length*bodyFit.actual*1.75:0));
-  if(asset.textSurface!=='none'){
+  const opacity=surfaceOpacity(asset,true);
+  if(opacity>0){
     // Only wash behind actual lines, leaving the unused area of the artwork visible.
     ctx.save();ctx.shadowColor=light?'#15131b':'#fffaf5';ctx.shadowBlur=36;
-    round(ctx,x-22,y-24,w+44,paintedHeight+48,24,light?'rgba(20,19,26,.76)':'rgba(255,252,247,.92)');ctx.restore();
+    round(ctx,x-22,y-24,w+44,paintedHeight+48,24,light?`rgba(20,19,26,${opacity})`:`rgba(255,252,247,${opacity})`);ctx.restore();
   }
   function readingBlock(text:string,top:number,height:number,size:number,weight=400){
     if(!text)return 0;
     const {actual,lines,overflow}=fitReading(text,height,size,weight);
     if(overflow)report.warnings.push('文章が表示領域を超えています。文章を短くするか、文字エリアを広げてください。');
-    report.minFontSize=Math.min(report.minFontSize,actual);ctx.font=`${weight} ${actual}px "${t.font}"`;ctx.fillStyle=ink;ctx.textBaseline='top';
+    report.minFontSize=Math.min(report.minFontSize,actual);ctx.font=`${weight} ${actual}px "${font}"`;ctx.fillStyle=ink;ctx.textBaseline='top';
     ctx.save();ctx.beginPath();ctx.rect(x,y,w+8,h);ctx.clip();ctx.textAlign=align;
     lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+w/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
     return lines.length*actual*1.75;

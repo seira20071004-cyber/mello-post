@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type {Appearance} from './appearance';
 
 export const inputSchema = z.object({
   theme: z.string().trim().min(2, 'テーマを2文字以上で入力してください').max(120),
@@ -11,6 +12,7 @@ export const inputSchema = z.object({
   aspectRatio:z.enum(['4:5','1:1','9:16']).default('4:5'),
   accountTopic:z.string().trim().max(100).default(''),
   mode:z.enum(['story','essay','info']).default('info'),
+  characterAge:z.enum(['30s','40s','50s','60s']).default('30s'),
 });
 export const itemSchema = z.object({id: z.number().int().min(1).max(16), title: z.string().trim().min(1).max(26), body: z.string().trim().min(1).max(100)});
 export const slideSchema = z.object({
@@ -40,8 +42,8 @@ export type Usage = {text: number; image: number; review: number; failed: number
 export const emptyUsage = (): Usage => ({text: 0, image: 0, review: 0, failed: 0, inputTokens: 0, outputTokens: 0});
 export const textBoxSchema=z.object({x:z.number().min(.04).max(.86),y:z.number().min(.04).max(.86),width:z.number().min(.25).max(.92),height:z.number().min(.18).max(.88)});
 export type TextBox=z.infer<typeof textBoxSchema>;
-export type SlideAsset = {image?: string; error?: string; review?: VisualReview; fontScale: number; sample?: boolean; textBox?:TextBox; textAlign?:'left'|'center'; textColor?:'dark'|'light'; textSurface?:'soft'|'none'};
-export const initialInput: Input = {theme: '', details: '', target: '40〜60代の女性', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story'};
+export type SlideAsset = Appearance & {image?: string; error?: string; review?: VisualReview; fontScale: number; sample?: boolean; textBox?:TextBox; textAlign?:'left'|'center'};
+export const initialInput: Input = {theme: '', details: '', target: '40〜60代の女性', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story',characterAge:'30s'};
 
 export function requestedCount(theme: string): number | null {
   const normalized = theme.normalize('NFKC');
@@ -108,6 +110,11 @@ export function validateEngagement(plan:Plan,input:Input):string[]{
     }
     if(plan.followCTA)issues.push('物語・エッセイのフォロー案内はキャプションにだけ入れてください');
     return [...new Set(issues)];
+  }
+  const emptyPromise=/(?:説明|紹介|解説|お伝え)(?:していき|いたし|し)ます|見ていきましょう/;
+  for(const [i,slide] of plan.slides.entries())if(i>0&&i<plan.slides.length-1){
+    const content=[slide.body,slide.emphasis,slide.nextTeaser,...plan.items.filter(item=>slide.itemIds.includes(item.id)).map(item=>item.body)];
+    if(content.some(text=>emptyPromise.test(text)))issues.push(`${i+1}枚目は「説明します・紹介します」で終わらず、実際のやり方・理由・例をその場で伝えてください`);
   }
   const cues=plan.slides.slice(0,-1).map(s=>s.nextTeaser?.trim()||'');
   if(cues.some(c=>c.length<5||/^(?:次(?:のページ|のスライド)?へ|続きはこちら|続きは次へ|スワイプしてね)[\s→！!。]*$/.test(c)))issues.push('表紙から最後の解説まで、次の内容につながる具体的な予告を付けてください');

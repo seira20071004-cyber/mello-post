@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {appearanceSchema} from './appearance';
 import { inputSchema, planSchema, itemSchema, slideSchema, emptyUsage, type Input, type Plan, type SlideAsset, type Usage, textBoxSchema } from './schema';
 
 export type ProjectContent = {input:Input;plan:Plan|null;assets:SlideAsset[];usage:Usage;reference?:string;isSample:boolean;phase:number;selected:number;tab:'text'|'image'};
@@ -14,7 +15,7 @@ const editablePlanSchema=planSchema.extend({
 });
 const contentSchema=z.object({
   input:inputSchema.extend({theme:z.string().max(120)}),plan:editablePlanSchema.nullable(),
-  assets:z.array(z.object({image:z.string().optional(),error:z.string().optional(),fontScale:z.number().min(.5).max(2),sample:z.boolean().optional(),textBox:textBoxSchema.optional(),textAlign:z.enum(['left','center']).optional(),textColor:z.enum(['dark','light']).optional(),textSurface:z.enum(['soft','none']).optional(),review:z.object({unexpectedText:z.boolean(),anatomyConcern:z.boolean(),styleConcern:z.boolean(),notes:z.array(z.string())}).optional()})),
+  assets:z.array(z.object({image:z.string().optional(),error:z.string().optional(),fontScale:z.number().min(.5).max(2),sample:z.boolean().optional(),textBox:textBoxSchema.optional(),textAlign:z.enum(['left','center']).optional(),...appearanceSchema.shape,review:z.object({unexpectedText:z.boolean(),anatomyConcern:z.boolean(),styleConcern:z.boolean(),notes:z.array(z.string())}).optional()})),
   usage:z.object({text:z.number(),image:z.number(),review:z.number(),failed:z.number(),inputTokens:z.number(),outputTokens:z.number()}),
   reference:z.string().optional(),isSample:z.boolean(),phase:z.number().int().min(0).max(2),selected:z.number().int().min(0).max(9),tab:z.enum(['text','image']),
 });
