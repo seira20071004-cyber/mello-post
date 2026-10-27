@@ -123,6 +123,10 @@ export function validateEngagement(plan:Plan,input:Input):string[]{
       const limit=readingBodyLimit(input);
       if(input.mode==='essay'&&slide.body.length>90&&!slide.body.includes('\n'))issues.push(`${i+1}枚目のエッセイは段落で改行し、読みやすくしてください`);
       if(slide.body.length>limit)issues.push(`${i+1}枚目の本文は${limit}文字以内にしてください`);
+      if(input.mode==='quote'&&i>0){
+        const lines=slide.body.trim().split(/\r?\n/).map(line=>line.trim());
+        if(lines.length!==2||!/^.+より、$/.test(lines[0])||!/^.+。$/.test(lines[1]||'')||lines.some(line=>line.length>24))issues.push(`${i+1}枚目は各行24文字以内の2行で「〜〜するより、」と「代わりにする具体的な行動。」を書いてください`);
+      }
       if(i===0&&(!slide.title||slide.body))issues.push('物語・エッセイの表紙は短いタイトルだけにしてください');
       if(i===0&&slide.title.length>28)issues.push('物語・エッセイの表紙は28文字以内の短いフックにしてください');
       if(i>0&&slide.title)issues.push('物語・エッセイの中面は見出しを付けず、本文だけにしてください');

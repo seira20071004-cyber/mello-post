@@ -200,7 +200,9 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   let bodyY=y;
   function fitReading(text:string,height:number,size:number,weight=400){
     let actual=Math.round(size),lines:string[]=[];
-    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=wrapText(ctx,text,w);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=w+8))break;}
+    const pairedLines=text.trim().split(/\r?\n/).map(line=>line.trim());
+    const fixedPair=input.mode==='quote'&&!cover&&pairedLines.length===2&&pairedLines[0].endsWith('より、')&&pairedLines[1].endsWith('。')&&pairedLines.every(line=>line.length<=24);
+    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=fixedPair?pairedLines:wrapText(ctx,text,w);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=w+8))break;}
     return {actual:Math.max(32,actual),overflow:actual<32,lines};
   }
   const titleFit=title?fitReading(title,body?h*.56:h,76*scale,600):undefined;
