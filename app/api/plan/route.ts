@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { inputSchema, planSchema, storedPlanSchema, comparisonPairSchema, slideSchema, itemSchema, inputIssues, validatePlan, validateEngagement } from '@/lib/schema';
 import { AppError, authorize, readBody, referenceSchema, withJob, structured, errorResponse } from '@/lib/server/api';
 import {compositionFor,generationSchema,finishReadingPath} from '@/lib/composition';
-import {generateStory} from '@/lib/server/stories';
+import {generateStory,storyEndingIssues} from '@/lib/server/stories';
 import { editorPrompt, modeReviewPrompt } from '@/lib/server/prompts';
 export const runtime='nodejs';export const maxDuration=300;
 const schema=z.object({requestId:z.string().uuid(),input:inputSchema,reference:referenceSchema,plan:storedPlanSchema.optional(),index:z.number().int().min(0).max(9).optional()});
@@ -24,7 +24,7 @@ export async function POST(request:Request) {
         const slide=regenerated.slide;
         slide.itemIds=old.itemIds;slide.layout=old.layout;
         const next={...body.plan,caption:regenerated.caption,followCTA:regenerated.followCTA||body.plan.followCTA,items:body.plan.items.map(item=>regenerated.items.find(i=>i.id===item.id)||item),slides:body.plan.slides.map((s,i)=>i===body.index?slide:s)};
-        const errors=[...validatePlan(next,body.input),...validateEngagement(next,body.input)];if(errors.length)throw new AppError(errors.join(' / '),422);
+        const errors=[...validatePlan(next,body.input),...validateEngagement(next,body.input),...((body.input.mode==='story'||body.input.mode==='comic')&&body.index===next.slides.length-1?storyEndingIssues(next):[])];if(errors.length)throw new AppError(errors.join(' / '),422);
         return next;
       }
       if(body.input.mode==='story'||body.input.mode==='comic')return generateStory(body.input,body.reference,usage);
