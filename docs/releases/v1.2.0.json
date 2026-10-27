@@ -1,6 +1,6 @@
 {
   "version": "1.2.0",
-  "status": "approved_preparing",
+  "status": "published",
   "date": "2026-10-27",
   "authorization": "User approved the reviewed local version and explicitly requested full publication.",
   "previous": {
@@ -18,5 +18,32 @@
       "published_at": "2026-10-27T09:25:18.889412+00:00"
     }
   },
-  "application_source_commit": "15634e2d3f9e7f62ce28ab4d26ab665fe181109c"
+  "application_source_commit": "15634e2d3f9e7f62ce28ab4d26ab665fe181109c",
+  "hosting": {
+    "provider": "Sites / Cloudflare Workers",
+    "url": "https://mello-post-studio.seira20071004.chatgpt.site",
+    "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
+    "saved_version_number": 6,
+    "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_a422d97a0af881919351bbb04557a1b5",
+    "source_commit": "a5d066d5c95eeddad1511e55786f08a44230060e",
+    "deployment_id": "appgdep_6ae09e9a7aa48191a19bb634837c3102",
+    "environment_revision": 2,
+    "published_at": "2026-10-27T12:53:06.416792+00:00"
+  },
+  "github_tag": "v1.2.0",
+  "verification": {
+    "automated_tests_passed": 180,
+    "source_typecheck": "passed",
+    "nextjs_build": "passed before approval on unchanged application source",
+    "hosting_build": "passed",
+    "reviewed_application_sync": "20 application files byte-for-byte identical to approved 15634e2",
+    "public_access": "passed with unchanged password",
+    "public_tutorial": "actual theme input then mode guidance verified; free guide and API cost distinction visible",
+    "public_text_generation": "passed: essay seven slides, generation 1 plus review 1, image calls 0; final summary and same-slide follow verified",
+    "public_existing_drafts": "previous eight retained; separate verification post saved",
+    "public_image_generation": "not repeated; assets and generation code packaged from reviewed source",
+    "hosting_standalone_typecheck": "reports unknown Response.json types in PasswordGate, Studio and server/api with hosted environment typings; production build and public generation passed"
+  },
+  "data_storage": "Existing browser-local drafts and schema retained. Git tags do not back up browser data.",
+  "secrets": "Production environment revision 2 retained unchanged; no secret values stored in release record."
 }
