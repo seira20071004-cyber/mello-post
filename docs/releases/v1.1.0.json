@@ -1,0 +1,37 @@
+{
+  "version": "1.1.0",
+  "status": "prepared",
+  "date": "2026-10-27",
+  "authorization": "User explicitly approved the reviewed six-mode application and requested GitHub main and public Site update, including adjacent story modes and the rephrasing label.",
+  "previous": {
+    "github_tag": "v1.0.0",
+    "github_commit": "6328deb7c7a8ad3a27eddb787cd64fca7e8c1c0a",
+    "hosting": {
+      "provider": "Sites / Cloudflare Workers",
+      "url": "https://mello-post-studio.seira20071004.chatgpt.site",
+      "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
+      "saved_version_number": 4,
+      "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_7e7ccd8b6cfc8191b600366f04caf218",
+      "source_commit": "ec002f1268450a971d3cdf7a5721583c3f1f3862",
+      "deployment_id": "appgdep_6adf696af8c08191996f3f5060bc7af0"
+    }
+  },
+  "application_source_commit": "05f9f52cb984f405e7ecc356f085d8523260ae19",
+  "hosting": {
+    "provider": "Sites / Cloudflare Workers",
+    "url": "https://mello-post-studio.seira20071004.chatgpt.site",
+    "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
+    "saved_version_number": 5,
+    "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_8f8950b50514819197c35e507bb8470e",
+    "source_commit": "45ce9f894d4a1be12cf5f20dd8a94b308913a3c9"
+  },
+  "verification": {
+    "automated_tests_passed": 153,
+    "typecheck": "passed",
+    "nextjs_build": "passed",
+    "hosting_build": "passed",
+    "local_mode_order_and_label": "verified in browser"
+  },
+  "data_storage": "Existing mode IDs and browser IndexedDB migration paths preserved; browser drafts are not included in Git tags.",
+  "secrets": "Existing production environment revision retained; no secret values in this record."
+}
