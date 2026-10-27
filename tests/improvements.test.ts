@@ -30,7 +30,7 @@ describe('unambiguous story pagination',()=>{
 describe('daily happiness evidence',()=>{
   it.each(['story','comic'] as const)('rejects an invented turning point in %s while keeping old saved plans readable',mode=>{
     const input={...initialInput,mode,theme:storySample.title};
-    const result={publication:{title:storySample.title,hook:storySample.slides[0].title,artDirection:storySample.artDirection,coverIllustration:storySample.slides[0].illustration,caption:storySample.caption,pages:storySample.slides.slice(1).map(s=>({body:s.body,illustration:s.illustration}))},continuity:{discovery:{everydayScene:'帰り道に娘の石の名前を知る',turningPointPage:4,turningPointLine:'一つずつ、名前があった。',noticedHappiness:'娘の見ている世界を分けてもらううれしさ',endingConnection:'名前のある石を捨てずに箱に置いて大切にする'},transitions:Array.from({length:4},(_,i)=>({fromPage:i+2,toPage:i+3,connection:'同じ帰り道で娘が石について話し母親が受け止める'})),unresolved:[]}};
+    const result={publication:{title:storySample.title,hook:storySample.slides[0].title,artDirection:storySample.artDirection,coverIllustration:storySample.slides[0].illustration,caption:storySample.caption,pages:storySample.slides.slice(1).map(s=>({body:s.body,illustration:s.illustration}))},continuity:{discovery:{everydayScene:'帰り道に娘の石の名前を知る',turningPointPage:4,turningPointLine:'ママの好きな、お月さまみたいでしょ',noticedHappiness:'娘の見ている世界を分けてもらううれしさ',endingConnection:'名前のある石を捨てずに箱に置いて大切にする'},transitions:Array.from({length:4},(_,i)=>({fromPage:i+2,toPage:i+3,connection:'同じ帰り道で娘が石について話し母親が受け止める'})),unresolved:[]}};
     expect(storyIssues(result,input)).toEqual([]);
     const originalHook=result.publication.hook;result.publication.hook='娘がコップを';expect(storyIssues(result,input).join()).toContain('助詞');result.publication.hook=originalHook;
     result.continuity.discovery.turningPointPage=3;
