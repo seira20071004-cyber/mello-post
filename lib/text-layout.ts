@@ -10,6 +10,11 @@ export function clampTextBox(box:TextBox):TextBox{
   return {width,height,x:Math.max(.04,Math.min(.96-width,box.x)),y:Math.max(.04,Math.min(.96-height,box.y))};
 }
 export function textBoxFor(input:Pick<Input,'mode'>,asset:SlideAsset,cover=false,ending=false):TextBox{return clampTextBox(asset.textBox||defaultTextBox(input,cover,ending));}
+// New comics use a shallower text area to leave faces clear. Store it on the
+// new asset so opening an older draft keeps that draft's existing defaults.
+export function newSlideAsset(input:Pick<Input,'mode'>,index:number):SlideAsset{
+  return input.mode==='comic'&&index>0?{fontScale:1,textBox:{...defaultTextBox(input),height:.25}}:{fontScale:1};
+}
 export function positionTextBox(box:TextBox,position:'top'|'bottom'|'left'|'right'):TextBox{
   return clampTextBox({...box,...(position==='top'?{x:.08,y:.08}:position==='bottom'?{x:.08,y:.94-box.height}:position==='left'?{x:.06,y:.12,width:.58}: {x:.36,y:.12,width:.58})});
 }

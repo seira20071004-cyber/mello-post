@@ -34,3 +34,5 @@ describe('reading area and background reuse',()=>{
   }});
   it('changes rendered pixels when the text moves, without changing its background',()=>{const hashes=new Set<string>();for(const pos of ['top','bottom'] as const){const canvas=createCanvas(1080,1350),asset:SlideAsset={fontScale:1,textBox:positionTextBox(textBoxFor(story,{fontScale:1}),pos)};drawSlide(canvas.getContext('2d') as unknown as CanvasRenderingContext2D,storySample,story,2,asset);hashes.add(createHash('sha256').update(canvas.toBuffer('image/png')).digest('hex'));}expect(hashes.size).toBe(2);});
 });
+
+it('keeps faces clear in new comic assets without moving old drafts',async()=>{const {newSlideAsset,textBoxFor}=await import('../lib/text-layout');const input={...initialInput,mode:'comic' as const};expect(textBoxFor(input,newSlideAsset(input,1)).height).toBe(.25);expect(textBoxFor(input,{fontScale:1}).height).toBe(.4);expect(newSlideAsset(input,0)).toEqual({fontScale:1});expect(newSlideAsset(initialInput,1)).toEqual({fontScale:1});});

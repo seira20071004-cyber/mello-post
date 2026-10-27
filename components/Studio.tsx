@@ -18,13 +18,13 @@ import AppearanceControls from './AppearanceControls';
 import {appearancePatch} from '@/lib/appearance';
 import {characterAges} from '@/lib/characters';
 import {modes,themeExamples,isNarrative,pendingImageCalls,usesSharedBackground,isAssetComplete,backgroundGroups,hasQuoteFlow} from '@/lib/modes';
-import {textBoxFor,positionTextBox,clampTextBox} from '@/lib/text-layout';
+import {textBoxFor,positionTextBox,clampTextBox,newSlideAsset} from '@/lib/text-layout';
 import ProjectLibrary from './ProjectLibrary';
 import {readProject,setProjectArchived,type ProjectContent} from '@/lib/projects';
 import {useProjects} from '@/lib/use-projects';
 
 type Config={configured:boolean;passwordRequired:boolean;text:string;image:string;imageEstimateUSD:number|null};
-const freshAssets=(count:number):SlideAsset[]=>Array.from({length:count},()=>({fontScale:1}));
+const freshAssets=(count:number,input:Input):SlideAsset[]=>Array.from({length:count},(_,i)=>newSlideAsset(input,i));
 const previewAsset:SlideAsset={fontScale:1,sample:true};
 const examples=[{mode:'story',label:'雨の日の小さなやさしさ'},{mode:'essay',label:'寝かしつけ後の気持ち'},{mode:'info',label:'朝の支度の声かけ3選'}] as const;
 function Button({children,className='',...props}:React.ButtonHTMLAttributes<HTMLButtonElement>){return <button className={`button ${className}`} {...props}>{children}</button>;}
@@ -67,7 +67,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
   async function generatePlan(){
     const parsed=inputSchema.safeParse(input);if(!parsed.success){setError(parsed.error.issues[0].message);return;}
     const problems=inputIssues(input);if(problems.length){setError(problems.join(' / '));return;}
-    await run((input.mode==='story'||input.mode==='comic')?'一つの物語をつくり、場面のつながりを整えています':'構成と文章を考え、日本語を校正しています',async()=>{const next=await api<Plan>('plan',{input,reference});setPlan(next);setAssets(freshAssets(next.slides.length));setIsSample(false);setSelected(0);move(1);});
+    await run((input.mode==='story'||input.mode==='comic')?'一つの物語をつくり、場面のつながりを整えています':'構成と文章を考え、日本語を校正しています',async()=>{const next=await api<Plan>('plan',{input,reference});setPlan(next);setAssets(freshAssets(next.slides.length,input));setIsSample(false);setSelected(0);move(1);});
   }
   async function showLibrary(){
     if(busy||exporting||switching)return;setSwitching(true);
@@ -85,7 +85,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
     setSwitching(true);try{await setProjectArchived(id,archived);await library.refresh();if(library.activeId===id)library.begin();setToast(archived?'アーカイブに移動しました。いつでも元に戻せます。':'マイスタジオに戻しました。');}catch(e){setError((e as Error).message);}finally{setSwitching(false);}
   }
   async function loadSample(){
-    if(!await library.flush())return;library.begin();setInput({...input,theme:demoPlan.title,count:6});setPlan(structuredClone(demoPlan));setAssets(freshAssets(6).map(a=>({...a,sample:true})));setUsage(emptyUsage());setIsSample(true);setReference(undefined);setSelected(0);setError('');move(1);setToast('固定の操作サンプルを開きました。AI生成・課金は行っていません。');
+    if(!await library.flush())return;library.begin();setInput({...input,theme:demoPlan.title,count:6});setPlan(structuredClone(demoPlan));setAssets(freshAssets(6,input).map(a=>({...a,sample:true})));setUsage(emptyUsage());setIsSample(true);setReference(undefined);setSelected(0);setError('');move(1);setToast('固定の操作サンプルを開きました。AI生成・課金は行っていません。');
   }
   function updateAsset(index:number,patch:Partial<SlideAsset>){setAssets(prev=>prev.map((a,i)=>i===index?{...a,...patch}:a));}
   async function imageFor(index:number,currentPlan:Plan,ref?:string,panel:ComparisonPanel='now'){
@@ -229,7 +229,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
       </div>
     </main>
     {toast&&<div className="toast" role="status"><CheckCircle2 size={19}/>{toast}</div>}
-    <dialog ref={dialog} className="help-dialog" onCancel={()=>setHelp(false)}><button className="dialog-close icon-button" aria-label="閉じる" onClick={()=>setHelp(false)}><X size={22}/></button><div className="eyebrow">A GENTLE GUIDE</div><h2>はじめてのmellō</h2><ol><li><strong>テーマを入力</strong><p>伝えたいこととデザインを選びます。AIが構成・文章・キャプションを作り、校正します。</p></li><li><strong>文章を確認して、画像を生成</strong><p>「背景をつくる」を押したときだけ画像APIを呼び出します。生成前に文字や項目数を確認できます。</p></li><li><strong>自分らしく整えて保存</strong><p>物語・エッセイは文字エリアをドラッグして移動できます。エッセイは背景1枚を全ページで共有。文字やデザインの変更は無料。各スライドのPNGとキャプションをZIPで保存できます。</p></li></ol><div className="guide-note"><strong>料金と保存について</strong><p>OpenAIのAPI利用料が別途発生します。文章作成は生成＋校正の2回が基本で、整合性修正が必要なときだけ追加で1回校正します。背景1枚につき画像生成＋画像点検の2回が基本です。通信失敗でも料金が発生する場合があります。自動再試行はしません。</p><p>テーマごとに複数の投稿セットをマイスタジオへ自動保存します。入力途中・編集途中から再開でき、生成済み画像も保持します。保存先はこのブラウザです。別の端末とは同期されず、ブラウザのデータ削除で失われます。テーマ・参考画像は生成時にOpenAIへ送信されます。APIキーはサーバーだけで使用します。</p><p>画像の崩れや文章の正しさは完全に保証できません。投稿前に内容と画像をご確認ください。</p><p>画像比率は4:5（1080×1350）を初期値に、1:1（1080×1080）、9:16（1080×1920）から選べます。比率変更でもAI画像は再生成しません。</p></div><p className="connection-status">API設定：{config?.configured?'設定済み（接続は未検証）':'未設定'}<br/>文章：{config?.text} / 画像：{config?.image}</p><Button className="primary full" onClick={()=>setHelp(false)}>はじめる <ArrowRight size={17}/></Button></dialog>
+    <dialog ref={dialog} className="help-dialog" onCancel={()=>setHelp(false)}><button className="dialog-close icon-button" aria-label="閉じる" onClick={()=>setHelp(false)}><X size={22}/></button><div className="eyebrow">A GENTLE GUIDE</div><h2>はじめてのmellō</h2><ol><li><strong>テーマを入力</strong><p>伝えたいこととデザインを選びます。AIが構成・文章・キャプションを作り、校正します。</p></li><li><strong>文章を確認して、画像を生成</strong><p>「背景をつくる」を押したときだけ画像APIを呼び出します。生成前に文字や項目数を確認できます。</p></li><li><strong>自分らしく整えて保存</strong><p>物語・エッセイは文字エリアをドラッグして移動できます。エッセイは背景1枚を全ページで共有。文字やデザインの変更は無料。各スライドのPNGとキャプションをZIPで保存できます。</p></li></ol><div className="guide-note"><strong>料金と保存について</strong><p>OpenAIのAPI利用料が別途発生します。文章作成は通常2回、物語１・２は全文生成・ページ分割・本文の独立点検の3回が基本です。整合性修正が必要なときは追加で1回校正します。背景1枚につき画像生成＋画像点検の2回が基本です。通信失敗でも料金が発生する場合があります。自動再試行はしません。</p><p>テーマごとに複数の投稿セットをマイスタジオへ自動保存します。入力途中・編集途中から再開でき、生成済み画像も保持します。保存先はこのブラウザです。別の端末とは同期されず、ブラウザのデータ削除で失われます。テーマ・参考画像は生成時にOpenAIへ送信されます。APIキーはサーバーだけで使用します。</p><p>画像の崩れや文章の正しさは完全に保証できません。投稿前に内容と画像をご確認ください。</p><p>画像比率は4:5（1080×1350）を初期値に、1:1（1080×1080）、9:16（1080×1920）から選べます。比率変更でもAI画像は再生成しません。</p></div><p className="connection-status">API設定：{config?.configured?'設定済み（接続は未検証）':'未設定'}<br/>文章：{config?.text} / 画像：{config?.image}</p><Button className="primary full" onClick={()=>setHelp(false)}>はじめる <ArrowRight size={17}/></Button></dialog>
     <dialog ref={zoomDialog} className="zoom-dialog" onCancel={()=>setZoom(false)}><button className="dialog-close icon-button" aria-label="拡大表示を閉じる" onClick={()=>setZoom(false)}><X size={24}/></button>{plan&&<SlidePreview plan={plan} input={input} index={selected} asset={assets[selected]}/>}</dialog>
 
   </div>;

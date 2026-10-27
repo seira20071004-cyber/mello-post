@@ -3,7 +3,7 @@ import {createCanvas,GlobalFonts} from '@napi-rs/canvas';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {drawSlide} from '../lib/render';
-import {initialInput,inputSchema,validateEngagement,type SlideAsset} from '../lib/schema';
+import {initialInput,inputSchema,validatePlan,validateEngagement,type SlideAsset} from '../lib/schema';
 import {samplePlan} from '../lib/sample';
 import {storySample} from '../lib/reading-samples';
 import {appearanceSchema,surfaceOpacity,fontFor,colorFor,appearancePatch} from '../lib/appearance';
@@ -24,5 +24,18 @@ describe('age and actual explanations',()=>{
 });
 
 describe('unambiguous story pagination',()=>{
-  it.each([3,6,10])('assembles exactly %i slides with a separate cover and nonempty body pages',count=>{const input={...initialInput,theme:'親子の帰り道',count};const result={publication:{title:'親子の帰り道',hook:'娘が傘を傾けた理由',artDirection:'A mother in her 30s and her daughter, soft watercolor.',coverIllustration:'Mother and child on a rainy walk.',caption:'雨の日の親子の気づきを描いた創作の物語です。日々の温かい場面をまた読んでいただけたらうれしいです。 #親子 #子育て #日々の気づき',pages:Array.from({length:count-1},(_,i)=>({body:`${i+1}歩進むと、娘が私の傘をそっと見上げた。`,illustration:'Mother and daughter walking with umbrellas.'}))},continuity:{transitions:Array.from({length:count-2},(_,i)=>({fromPage:i+2,toPage:i+3,connection:'二人が同じ帰り道で会話と歩みを続けている'})),unresolved:[]}};expect(storyResultSchema(input).safeParse(result).success).toBe(true);const p=assembleStory(result);expect(p.slides).toHaveLength(count);expect(p.slides[0].body).toBe('');expect(p.slides[0].layout).toBe('cover');expect(p.slides.at(-1)!.layout).toBe('summary');expect(p.slides.slice(1).every(s=>s.body&&!s.title)).toBe(true);expect(storyIssues(result,input)).toEqual([]);result.publication.pages[0].body='';expect(storyResultSchema(input).safeParse(result).success).toBe(false);});
+  it.each([3,6,10])('assembles exactly %i slides with a separate cover and nonempty body pages',count=>{const input={...initialInput,theme:'親子の帰り道',count};const result={publication:{title:'親子の帰り道',hook:'娘が傘を傾けた理由',artDirection:'A mother in her 30s and her daughter, soft watercolor.',coverIllustration:'Mother and child on a rainy walk.',caption:'雨の日の親子の気づきを描いた創作の物語です。日々の温かい場面をまた読んでいただけたらうれしいです。 #親子 #子育て #日々の気づき',pages:Array.from({length:count-1},(_,i)=>({body:`${i+1}歩進むと、娘が私の傘をそっと見上げた。`,illustration:'Mother and daughter walking with umbrellas.'}))},continuity:{discovery:{everydayScene:'母と娘が雨の日の帰り道を歩く',turningPointPage:2,turningPointLine:'娘が私の傘をそっと見上げた。',noticedHappiness:'娘が自分を気にかけてくれるうれしさ',endingConnection:'娘の気づかいを感じながら一緒に歩き続ける'},transitions:Array.from({length:count-2},(_,i)=>({fromPage:i+2,toPage:i+3,connection:'二人が同じ帰り道で会話と歩みを続けている'})),unresolved:[]}};expect(storyResultSchema(input).safeParse(result).success).toBe(true);const p=assembleStory(result);expect(p.slides).toHaveLength(count);expect(p.slides[0].body).toBe('');expect(p.slides[0].layout).toBe('cover');expect(p.slides.at(-1)!.layout).toBe('summary');expect(p.slides.slice(1).every(s=>s.body&&!s.title)).toBe(true);expect(storyIssues(result,input)).toEqual([]);result.publication.pages[0].body='';expect(storyResultSchema(input).safeParse(result).success).toBe(false);});
+});
+
+describe('daily happiness evidence',()=>{
+  it.each(['story','comic'] as const)('rejects an invented turning point in %s while keeping old saved plans readable',mode=>{
+    const input={...initialInput,mode,theme:storySample.title};
+    const result={publication:{title:storySample.title,hook:storySample.slides[0].title,artDirection:storySample.artDirection,coverIllustration:storySample.slides[0].illustration,caption:storySample.caption,pages:storySample.slides.slice(1).map(s=>({body:s.body,illustration:s.illustration}))},continuity:{discovery:{everydayScene:'帰り道に娘の石の名前を知る',turningPointPage:4,turningPointLine:'一つずつ、名前があった。',noticedHappiness:'娘の見ている世界を分けてもらううれしさ',endingConnection:'名前のある石を捨てずに箱に置いて大切にする'},transitions:Array.from({length:4},(_,i)=>({fromPage:i+2,toPage:i+3,connection:'同じ帰り道で娘が石について話し母親が受け止める'})),unresolved:[]}};
+    expect(storyIssues(result,input)).toEqual([]);
+    const originalHook=result.publication.hook;result.publication.hook='娘がコップを';expect(storyIssues(result,input).join()).toContain('助詞');result.publication.hook=originalHook;
+    result.continuity.discovery.turningPointPage=3;
+    expect(storyIssues(result,input).join()).toContain('きっかけ');
+    expect(assembleStory(result)).not.toHaveProperty('continuity');
+    expect(validatePlan(storySample,input)).toEqual([]);
+  });
 });
