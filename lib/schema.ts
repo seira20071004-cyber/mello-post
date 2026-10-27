@@ -3,7 +3,7 @@ import type {Appearance} from './appearance';
 
 export const inputSchema = z.object({
   theme: z.string().trim().min(2, 'テーマを2文字以上で入力してください').max(120),
-  details: z.string().max(1500).default(''), target: z.string().max(120).default('40〜60代の女性'),
+  details: z.string().max(1500).default(''), target: z.string().max(120).default(''),
   count: z.number().int().min(3).max(10).default(6),
   template: z.enum(['petal', 'leaf', 'ink']).default('petal'),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#ba7886'),
@@ -54,7 +54,7 @@ export const emptyUsage = (): Usage => ({text: 0, image: 0, review: 0, failed: 0
 export const textBoxSchema=z.object({x:z.number().min(.04).max(.86),y:z.number().min(.04).max(.86),width:z.number().min(.25).max(.92),height:z.number().min(.18).max(.88)});
 export type TextBox=z.infer<typeof textBoxSchema>;
 export type SlideAsset = Appearance & {image?: string; error?: string; review?: VisualReview; fontScale: number; sample?: boolean; textBox?:TextBox; textAlign?:'left'|'center'; futureImage?:string;futureError?:string;futureReview?:VisualReview};
-export const initialInput: Input = {theme: '', details: '', target: '40〜60代の女性', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story',characterAge:'30s',nowYear:2026,futureYear:2046};
+export const initialInput: Input = {theme: '', details: '', target: '', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story',characterAge:'30s',nowYear:2026,futureYear:2046};
 
 export function requestedCount(theme: string): number | null {
   const normalized = theme.normalize('NFKC');

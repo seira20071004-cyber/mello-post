@@ -1,4 +1,12 @@
 import type {Input,SlideAsset} from './schema';
+export const themeExamples={
+  story:'雨の日、娘が私のぬれた袖を小さなタオルで拭いてくれた',
+  essay:'寝かしつけのあと、今日も怒ってしまった自分に伝えたいこと',
+  info:'朝の支度が進まない子どもに、試してみたい声かけ3選',
+  comic:'保育園の帰り道、拾った石を「ママの宝物」と渡してくれる息子',
+  comparison:'小さな靴が並ぶいまの玄関と、子どもが巣立った20年後の玄関',
+  quote:'がんばりすぎているママへ。「ちゃんとしなきゃ」が少し軽くなる言葉',
+} satisfies Record<Input['mode'],string>;
 export const modes={
   story:{name:'短い物語',description:'日常の一場面から、心に残る気づきへ。短い言葉と絵で伝えます。',hint:'会話・出来事・そのときの気持ちを教えてください。未入力なら創作の物語をつくります。'},
   essay:{name:'思いを綴る',description:'同じ背景に、あなたの思いを。余白のある読みものに整えます。',hint:'大切にしている考え、伝えたい思い、実際の経験などを書いてください。'},

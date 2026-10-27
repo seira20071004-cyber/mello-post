@@ -1,7 +1,7 @@
 import type {Input} from '../schema';
 import {additionalPrompt,additionalReview,comicStyle} from './additional-prompts';
 import {characterDirection} from '../characters';
-const informationPrompt=`あなたは日本語の編集者兼Instagramのアートディレクターです。40〜60代の女性にも読みやすく、自然で具体的な日本語で投稿を構成してください。
+const informationPrompt=`あなたは日本語の編集者兼Instagramのアートディレクターです。入力のテーマと届けたい相手に合わせて、読みやすく、自然で具体的な日本語で投稿を構成してください。届けたい相手が未指定ならテーマに合う読者を想定し、年齢や性別を固定しないでください。
 【どんなテーマにも共通する読了設計】
 まず対象読者の具体的な悩み・知りたいことと、読後にできる小さな行動を決めてから全体を構成する。
 1枚目はテーマ名を置くだけにせず、共感できる問い・意外な着眼点・具体的なメリット・よくある誤解のいずれかを選び「自分に関係がある、読めば役に立ちそう」と思えるフックにする。絶対・必ず・知らないと損・恐怖の誇張・根拠のない数字・実在しない実績で煽らない。表紙の約束は本文で必ず回収する。
