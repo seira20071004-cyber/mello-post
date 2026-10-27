@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "status": "prepared",
+  "status": "published",
   "date": "2026-10-27",
   "authorization": "User explicitly approved the reviewed six-mode application and requested GitHub main and public Site update, including adjacent story modes and the rephrasing label.",
   "previous": {
@@ -23,15 +23,25 @@
     "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
     "saved_version_number": 5,
     "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_8f8950b50514819197c35e507bb8470e",
-    "source_commit": "45ce9f894d4a1be12cf5f20dd8a94b308913a3c9"
+    "source_commit": "45ce9f894d4a1be12cf5f20dd8a94b308913a3c9",
+    "deployment_id": "appgdep_6ae06deb83308191bcc9fe3d8dbb0771",
+    "environment_revision": 2,
+    "published_at": "2026-10-27T09:25:18.889412+00:00"
   },
   "verification": {
     "automated_tests_passed": 153,
     "typecheck": "passed",
     "nextjs_build": "passed",
     "hosting_build": "passed",
-    "local_mode_order_and_label": "verified in browser"
+    "local_mode_order_and_label": "verified in browser",
+    "deployment": "succeeded",
+    "public_browser": "Verified existing password access, adjacent story modes and rephrasing label; previous eight public drafts remain visible.",
+    "initial_public_generation": "Failed authentication with the previously expired production key; the previously user-authorized replacement key was then applied.",
+    "public_access": "passed with existing application password",
+    "public_text_generation": "passed: six-slide rephrasing post, generation plus review, zero failed calls after credential refresh",
+    "public_image_generation": "not repeated in production; full local story image-generation and export checks completed before approval"
   },
   "data_storage": "Existing mode IDs and browser IndexedDB migration paths preserved; browser drafts are not included in Git tags.",
-  "secrets": "Existing production environment revision retained; no secret values in this record."
+  "secrets": "Previously authorized replacement OPENAI_API_KEY applied securely to production; all other environment variables and app password retained. No values stored in Git or this record.",
+  "github_tag": "v1.1.0"
 }
