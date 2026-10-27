@@ -9,11 +9,11 @@ export const themeExamples={
 } satisfies Record<Input['mode'],string>;
 export const modes={
   story:{name:'物語１',description:'やさしい水彩と短い文章で。日常の一コマから、そばにある幸せに気づく物語。',hint:'何気ない出来事や会話、そのときの気持ちを教えてください。未入力なら創作の物語をつくります。'},
+  comic:{name:'物語２',description:'ゆるい漫画と短い縦書きで。何気ない会話やしぐさから、小さな幸せが見つかる物語。',hint:'くすっと笑った会話、子どものしぐさ、うれしかった日常の一コマなど。'},
   essay:{name:'思いを綴る',description:'同じ背景に、あなたの思いを。余白のある読みものに整えます。',hint:'大切にしている考え、伝えたい思い、実際の経験などを書いてください。'},
   info:{name:'情報を伝える',description:'コツやノウハウを、順序立ててわかりやすく。',hint:'伝えたいこと、入れたい内容などがあれば教えてください。'},
-  comic:{name:'物語２',description:'ゆるい漫画と短い縦書きで。何気ない会話やしぐさから、小さな幸せが見つかる物語。',hint:'くすっと笑った会話、子どものしぐさ、うれしかった日常の一コマなど。'},
   comparison:{name:'いまと未来',description:'家族で乗る車、休日の過ごし方。いまと未来の暮らしを、はっきりした違いで。',hint:'比べたい場所・人物・暮らし方を教えてください。例：子どもと荷物でいっぱいの車と、夫婦で身軽に出かける未来。'},
-  quote:{name:'ことばカード',description:'よくある後悔を、明日の選択へ。言い換えを重ね、最後は希望の言葉で。',hint:'届けたい思い、見つめ直したい考え方など。実在の人の名言としては生成しません。'},
+  quote:{name:'言い換え',description:'よくある後悔を、明日の選択へ。言い換えを重ね、最後は希望の言葉で。',hint:'届けたい思い、見つめ直したい考え方など。実在の人の名言としては生成しません。'},
 } as const;
 export function isNarrative(input:Pick<Input,'mode'>){return ['story','essay','comic','quote'].includes(input.mode);}
 export function usesSharedBackground(input:Pick<Input,'mode'>){return input.mode==='essay'||input.mode==='quote';}

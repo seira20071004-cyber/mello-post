@@ -64,7 +64,7 @@ export function requestedCount(theme: string): number | null {
   return kanji ? '一二三四五六七八九十'.indexOf(kanji[1]) + 1 : null;
 }
 export function inputIssues(input: Input): string[] {
-  if(input.mode==='quote'&&input.count<4)return ['ことばカードは、表紙・言い換え・振り返り・結びのため4枚以上にしてください'];
+  if(input.mode==='quote'&&input.count<4)return ['言い換えモードは、表紙・言い換え・振り返り・結びのため4枚以上にしてください'];
   if(input.mode==='comparison'&&input.futureYear<=input.nowYear)return ['未来の年は、現在の年より後にしてください'];
   if(input.mode!=='info')return [];
   const count = requestedCount(input.theme);
