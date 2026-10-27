@@ -1,0 +1,22 @@
+{
+  "version": "1.2.0",
+  "status": "approved_preparing",
+  "date": "2026-10-27",
+  "authorization": "User approved the reviewed local version and explicitly requested full publication.",
+  "previous": {
+    "github_tag": "v1.1.0",
+    "github_commit": "365a6aa5216f5ce962d837e3757884b48863a39e",
+    "hosting": {
+      "provider": "Sites / Cloudflare Workers",
+      "url": "https://mello-post-studio.seira20071004.chatgpt.site",
+      "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
+      "saved_version_number": 5,
+      "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_8f8950b50514819197c35e507bb8470e",
+      "source_commit": "45ce9f894d4a1be12cf5f20dd8a94b308913a3c9",
+      "deployment_id": "appgdep_6ae06deb83308191bcc9fe3d8dbb0771",
+      "environment_revision": 2,
+      "published_at": "2026-10-27T09:25:18.889412+00:00"
+    }
+  },
+  "application_source_commit": "15634e2d3f9e7f62ce28ab4d26ab665fe181109c"
+}
