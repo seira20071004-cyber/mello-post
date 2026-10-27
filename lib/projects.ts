@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {appearanceSchema} from './appearance';
-import { inputSchema, planSchema, itemSchema, slideSchema, emptyUsage, type Input, type Plan, type SlideAsset, type Usage, textBoxSchema } from './schema';
+import { inputSchema, storedPlanSchema, itemSchema, slideSchema, emptyUsage, type Input, type Plan, type SlideAsset, type Usage, textBoxSchema } from './schema';
 
 export type ProjectContent = {input:Input;plan:Plan|null;assets:SlideAsset[];usage:Usage;reference?:string;isSample:boolean;phase:number;selected:number;tab:'text'|'image'};
 export type StudioProject = ProjectContent & {version:2;id:string;createdAt:number;savedAt:number;revision:number;archived:boolean};
@@ -8,14 +8,14 @@ export type ProjectSummary = Pick<StudioProject,'id'|'createdAt'|'savedAt'|'revi
 
 // Editing may temporarily leave a title or caption blank. Persistence must preserve it;
 // strict publication validation still happens in schema.ts before generation/export.
-const editablePlanSchema=planSchema.extend({
+const editablePlanSchema=storedPlanSchema.extend({
   title:z.string(),caption:z.string(),
   items:z.array(itemSchema.extend({title:z.string(),body:z.string()})).max(16),
   slides:z.array(slideSchema.extend({title:z.string(),body:z.string(),emphasis:z.string()})).min(3).max(10),
 });
 const contentSchema=z.object({
-  input:inputSchema.extend({theme:z.string().max(120)}),plan:editablePlanSchema.nullable(),
-  assets:z.array(z.object({image:z.string().optional(),error:z.string().optional(),fontScale:z.number().min(.5).max(2),sample:z.boolean().optional(),textBox:textBoxSchema.optional(),textAlign:z.enum(['left','center']).optional(),...appearanceSchema.shape,review:z.object({unexpectedText:z.boolean(),anatomyConcern:z.boolean(),styleConcern:z.boolean(),notes:z.array(z.string())}).optional()})),
+  input:inputSchema.extend({theme:z.string().max(120),nowYear:z.number().int().min(0).max(9999).default(2026),futureYear:z.number().int().min(0).max(9999).default(2046)}),plan:editablePlanSchema.nullable(),
+  assets:z.array(z.object({image:z.string().optional(),error:z.string().optional(),futureImage:z.string().optional(),futureError:z.string().optional(),futureReview:z.object({unexpectedText:z.boolean(),anatomyConcern:z.boolean(),styleConcern:z.boolean(),notes:z.array(z.string())}).optional(),fontScale:z.number().min(.5).max(2),sample:z.boolean().optional(),textBox:textBoxSchema.optional(),textAlign:z.enum(['left','center']).optional(),...appearanceSchema.shape,review:z.object({unexpectedText:z.boolean(),anatomyConcern:z.boolean(),styleConcern:z.boolean(),notes:z.array(z.string())}).optional()})),
   usage:z.object({text:z.number(),image:z.number(),review:z.number(),failed:z.number(),inputTokens:z.number(),outputTokens:z.number()}),
   reference:z.string().optional(),isSample:z.boolean(),phase:z.number().int().min(0).max(2),selected:z.number().int().min(0).max(9),tab:z.enum(['text','image']),
 });
@@ -29,7 +29,7 @@ export function parseProject(value:unknown):StudioProject {
   return project;
 }
 export function summarizeProject(project:StudioProject,thumbnail?:string):ProjectSummary {
-  const imageCount=project.assets.filter(a=>a.image).length;
+  const imageCount=project.assets.filter(a=>a.image&&(project.input.mode!=='comparison'||a.futureImage)).length;
   return {id:project.id,createdAt:project.createdAt,savedAt:project.savedAt,revision:project.revision,archived:project.archived,isSample:project.isSample,title:project.input.theme.trim()||project.plan?.title||'無題の投稿',template:project.input.template,color:project.input.color,aspectRatio:project.input.aspectRatio,slideCount:project.plan?.slides.length||project.input.count,imageCount,stage:!project.plan?'idea':imageCount===project.plan.slides.length?'ready':'editing',thumbnail};
 }
 function openDB():Promise<IDBDatabase> {

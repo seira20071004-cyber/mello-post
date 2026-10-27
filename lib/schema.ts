@@ -11,8 +11,10 @@ export const inputSchema = z.object({
   quality: z.enum(['low', 'medium', 'high']).default('low'),
   aspectRatio:z.enum(['4:5','1:1','9:16']).default('4:5'),
   accountTopic:z.string().trim().max(100).default(''),
-  mode:z.enum(['story','essay','info']).default('info'),
+  mode:z.enum(['story','essay','info','comic','comparison','quote']).default('info'),
   characterAge:z.enum(['30s','40s','50s','60s']).default('30s'),
+  nowYear:z.number().int().min(1900).max(2200).default(2026),
+  futureYear:z.number().int().min(1901).max(2250).default(2046),
 });
 export const itemSchema = z.object({id: z.number().int().min(1).max(16), title: z.string().trim().min(1).max(26), body: z.string().trim().min(1).max(100)});
 export const slideSchema = z.object({
@@ -29,12 +31,21 @@ export const planSchema = z.object({
   caption: z.string().trim().min(40).max(2100),
   followCTA:z.string().trim().max(90).default(''),
 });
+export const comparisonPairSchema=z.object({
+  place:z.string().trim().min(1).max(80),
+  camera:z.string().trim().min(1).max(200),
+  nowIllustration:z.string().trim().min(1).max(600),
+  futureIllustration:z.string().trim().min(1).max(600),
+  nowCaption:z.string().trim().max(40),futureCaption:z.string().trim().max(40),
+});
+export const storedPlanSchema=planSchema.extend({comparisons:z.array(comparisonPairSchema).min(3).max(10).optional()});
+export type ComparisonPair=z.infer<typeof comparisonPairSchema>;
 export const visualReviewSchema = z.object({
   unexpectedText: z.boolean(), anatomyConcern: z.boolean(), styleConcern: z.boolean(),
   notes: z.array(z.string().max(180)).max(5),
 });
 export type Input = z.infer<typeof inputSchema>;
-export type Plan = z.infer<typeof planSchema>;
+export type Plan = z.infer<typeof storedPlanSchema>;
 export type Slide = z.infer<typeof slideSchema>;
 export type Item = z.infer<typeof itemSchema>;
 export type VisualReview = z.infer<typeof visualReviewSchema>;
@@ -42,8 +53,8 @@ export type Usage = {text: number; image: number; review: number; failed: number
 export const emptyUsage = (): Usage => ({text: 0, image: 0, review: 0, failed: 0, inputTokens: 0, outputTokens: 0});
 export const textBoxSchema=z.object({x:z.number().min(.04).max(.86),y:z.number().min(.04).max(.86),width:z.number().min(.25).max(.92),height:z.number().min(.18).max(.88)});
 export type TextBox=z.infer<typeof textBoxSchema>;
-export type SlideAsset = Appearance & {image?: string; error?: string; review?: VisualReview; fontScale: number; sample?: boolean; textBox?:TextBox; textAlign?:'left'|'center'};
-export const initialInput: Input = {theme: '', details: '', target: '40〜60代の女性', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story',characterAge:'30s'};
+export type SlideAsset = Appearance & {image?: string; error?: string; review?: VisualReview; fontScale: number; sample?: boolean; textBox?:TextBox; textAlign?:'left'|'center'; futureImage?:string;futureError?:string;futureReview?:VisualReview};
+export const initialInput: Input = {theme: '', details: '', target: '40〜60代の女性', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story',characterAge:'30s',nowYear:2026,futureYear:2046};
 
 export function requestedCount(theme: string): number | null {
   const normalized = theme.normalize('NFKC');
@@ -53,6 +64,7 @@ export function requestedCount(theme: string): number | null {
   return kanji ? '一二三四五六七八九十'.indexOf(kanji[1]) + 1 : null;
 }
 export function inputIssues(input: Input): string[] {
+  if(input.mode==='comparison'&&input.futureYear<=input.nowYear)return ['未来の年は、現在の年より後にしてください'];
   if(input.mode!=='info')return [];
   const count = requestedCount(input.theme);
   return count !== null && (count < 1 || count > (input.count - 2) * 2)
@@ -61,9 +73,10 @@ export function inputIssues(input: Input): string[] {
 const normalized = (s: string) => s.normalize('NFKC').replace(/[\s。、！？!?,.]/g, '').toLowerCase();
 export function validatePlan(plan: Plan, input: Input): string[] {
   const issues: string[] = [];
-  const parsed = planSchema.safeParse(plan);
+  const parsed = storedPlanSchema.safeParse(plan);
   if (!parsed.success) return parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`);
   if (plan.slides.length !== input.count) issues.push(`スライド枚数を${input.count}枚にしてください`);
+  if(input.mode==='comparison'){const parameters=inputSchema.safeParse(input);if(!parameters.success)issues.push('比較する年は有効な数値で入力してください');issues.push(...inputIssues(input));}
   const narrative=input.mode!=='info';
   if(!narrative&&!plan.items.length)issues.push('情報投稿には具体的な紹介項目を入れてください');
   const expected = narrative?null:requestedCount(input.theme);
@@ -84,8 +97,9 @@ export function validatePlan(plan: Plan, input: Input): string[] {
     const values = plan.items.map(i => normalized(i[field]));
     if (new Set(values).size !== values.length) issues.push(`項目の${field === 'title' ? 'タイトル' : '本文'}が重複しています`);
   }
+  if(input.mode==='comparison'&&(!plan.comparisons||plan.comparisons.length!==input.count))issues.push('各スライドに現在と未来の比較を一組ずつ用意してください');
   if(narrative&&plan.items.length)issues.push('物語・エッセイは箇条書きの項目を追加せず、本文だけで構成してください');
-  for(const slide of plan.slides){if(!slide.title&&!slide.body)issues.push('文章が空のページがあります');if(!narrative&&(!slide.title||!slide.body||!slide.emphasis||slide.body.length>180))issues.push('情報投稿のタイトル・本文・強調を確認してください');}
+  for(const slide of plan.slides){if(input.mode!=='comparison'&&!slide.title&&!slide.body)issues.push('文章が空のページがあります');if(!narrative&&(!slide.title||!slide.body||!slide.emphasis||slide.body.length>180))issues.push('情報投稿のタイトル・本文・強調を確認してください');}
   const headings = plan.slides.map(s => normalized(s.title)).filter(Boolean);
   if (new Set(headings).size !== headings.length) issues.push('スライドのタイトルが重複しています');
   const allText = [plan.title, plan.caption, ...plan.items.flatMap(i => [i.title,i.body]), ...plan.slides.flatMap(s => [s.title,s.body,s.emphasis])].join('\n');
@@ -98,9 +112,15 @@ export function validatePlan(plan: Plan, input: Input): string[] {
 // still be edited/exported with validatePlan without retroactively requiring it.
 export function validateEngagement(plan:Plan,input:Input):string[]{
   const issues:string[]=[];
+  if(input.mode==='comparison'){
+    if(plan.followCTA||plan.slides.some(s=>s.body||s.emphasis||s.nextTeaser))issues.push('比較画像では本文や予告帯を重ねず、年表示と必要な短い説明だけにしてください');
+    return [...validatePlan(plan,input),...inputIssues(input),...issues];
+  }
   if(input.mode!=='info'){
+    const bodies=plan.slides.slice(1).map(s=>normalized(s.body));
+    if((input.mode==='quote'||input.mode==='comic')&&new Set(bodies).size!==bodies.length)issues.push('同じ文章を繰り返さず、ページごとに一つの気づきや場面を伝えてください');
     for(const [i,slide] of plan.slides.entries()){
-      const limit=input.mode==='story'?80:input.aspectRatio==='1:1'?220:320;
+      const limit=readingBodyLimit(input);
       if(input.mode==='essay'&&slide.body.length>90&&!slide.body.includes('\n'))issues.push(`${i+1}枚目のエッセイは段落で改行し、読みやすくしてください`);
       if(slide.body.length>limit)issues.push(`${i+1}枚目の本文は${limit}文字以内にしてください`);
       if(i===0&&(!slide.title||slide.body))issues.push('物語・エッセイの表紙は短いタイトルだけにしてください');
@@ -132,3 +152,5 @@ export function validateEngagement(plan:Plan,input:Input):string[]{
   }
   return [...new Set(issues)];
 }
+
+export function readingBodyLimit(input:Pick<Input,'mode'|'aspectRatio'>){return input.mode==='comic'?60:input.mode==='quote'?64:input.mode==='story'?80:input.aspectRatio==='1:1'?220:320;}

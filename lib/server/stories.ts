@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {type Input,type Plan,type Usage,validatePlan,validateEngagement,planSchema,slideSchema} from '../schema';
+import {type Input,type Plan,type Usage,validatePlan,validateEngagement,planSchema,slideSchema,readingBodyLimit} from '../schema';
 import {characterDirection} from '../characters';
 import {structured,AppError} from './api';
 import {editorPrompt,modeReviewPrompt} from './prompts';
@@ -8,14 +8,14 @@ export function storyDraftSchema(input:Input){return z.object({
   title:z.string().trim().min(2).max(28),
   characters:z.array(z.object({name:z.string().min(1).max(24),role:z.string().min(1).max(40),appearance:z.string().min(1).max(180)})).min(1).max(4),
   setting:z.string().min(1).max(140),
-  story:z.string().trim().min((input.count-1)*12).max((input.count-1)*75),
+  story:z.string().trim().min((input.count-1)*12).max((input.count-1)*(input.mode==='comic'?55:75)),
   endingMeaning:z.string().min(1).max(120),
 });}
 export function storyResultSchema(input:Input){return z.object({
   publication:z.object({
     title:planSchema.shape.title,hook:z.string().trim().min(2).max(28),
     artDirection:planSchema.shape.artDirection,coverIllustration:slideSchema.shape.illustration,
-    pages:z.array(z.object({body:z.string().trim().min(1).max(80),illustration:slideSchema.shape.illustration})).length(input.count-1),
+    pages:z.array(z.object({body:z.string().trim().min(1).max(readingBodyLimit(input)),illustration:slideSchema.shape.illustration})).length(input.count-1),
     caption:planSchema.shape.caption,
   }),
   continuity:z.object({
@@ -59,9 +59,9 @@ async function paginate(input:Input,source:unknown,usage:Usage,allowRepair:boole
   return assembleStory(result);
 }
 export async function generateStory(input:Input,reference:string|undefined,usage:Usage):Promise<Plan>{
-  const content:unknown[]=[{type:'input_text',text:JSON.stringify({input,maxStoryCharacters:(input.count-1)*75})}];
+  const content:unknown[]=[{type:'input_text',text:JSON.stringify({input,maxStoryCharacters:(input.count-1)*(input.mode==='comic'?55:75)})}];
   if(reference)content.push({type:'input_image',image_url:reference,detail:'low'});
-  const draft=await structured(storyDraftSchema(input),storyDraftPrompt+'\n'+characterDirection(input),[{role:'user',content}],usage);
+  const draft=await structured(storyDraftSchema(input),storyDraftPrompt+'\n'+characterDirection(input)+(input.mode==='comic'?'\n短い日常漫画用の物語です。1場面ずつ15〜40文字の短文に分けられる簡潔な出来事と会話にする。':''),[{role:'user',content}],usage);
   return paginate(input,draft,usage,true);
 }
 export async function reviewStory(input:Input,plan:Plan,usage:Usage):Promise<Plan>{

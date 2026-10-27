@@ -2,8 +2,9 @@ import type { Input, Plan, SlideAsset } from './schema';
 import { tokens, readableInk } from './templates';
 import {canvasSize} from './formats';
 import {isNarrative} from './modes';
+import {drawVertical} from './vertical-text';
 import {textBoxFor} from './text-layout';
-import {fontFor,colorFor,surfaceOpacity} from './appearance';
+import {fontFor,colorFor,surfaceOpacity,effectiveSurfaceOpacity} from './appearance';
 export const WIDTH = 1080, HEIGHT = 1920;
 export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number; fontOverride?:string; colorOverride?:string};
 type Ctx = CanvasRenderingContext2D;
@@ -116,8 +117,9 @@ function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asse
   block(ctx,summary?'保存して、いつでも見返せるように':s.nextTeaser||'次のスライドへ →',116,1774,850,84,27,'Noto Sans JP',t.ink,report);
   return report;
 }
-export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource):RenderReport{
+export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource,futureImage?:CanvasImageSource):RenderReport{
   const size=canvasSize(input);
+  if(input.mode==='comparison')return drawComparisonSlide(ctx,plan,input,index,asset,image,futureImage);
   if(isNarrative(input))return drawReadingSlide(ctx,plan,input,index,asset,image);
   if(size.height===1920)return drawLegacySlide(ctx,plan,input,index,asset,image);
   const H=size.height,W=size.width,t=tokens(input),s=plan.slides[index],scale=asset.fontScale||1;
@@ -192,8 +194,8 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     for(let n=0;n<4;n++){ctx.beginPath();ctx.ellipse(W*(.63+n*.07),H*(.90-n*.035),85,145,.4+n*.25,0,Math.PI*2);ctx.fill();}ctx.restore();
   }
   const box=textBoxFor(input,asset,cover),x=box.x*W,y=box.y*H,w=box.width*W,h=box.height*H;
-  const ink=colorFor(input,asset),light=readableInk(ink)==='#241e24',font=fontFor(asset,t.font);
-  const scale=asset.fontScale||1,align=asset.textAlign||'left';
+  const ink=colorFor(input,asset),light=readableInk(ink)==='#241e24',font=fontFor(asset,input.mode==='comic'?'Noto Sans JP':t.font);
+  const scale=asset.fontScale||1,align=asset.textAlign||'left',vertical=(asset.writingMode||(!cover&&input.mode==='comic'?'vertical':'horizontal'))==='vertical';
   const title=cover?s.title:'',body=s.body;
   let bodyY=y;
   function fitReading(text:string,height:number,size:number,weight=400){
@@ -204,8 +206,8 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   const titleFit=title?fitReading(title,body?h*.56:h,76*scale,600):undefined;
   const titleHeight=titleFit?titleFit.lines.length*titleFit.actual*1.75+(body?28:0):0;
   const bodyFit=body?fitReading(body,Math.max(1,h-titleHeight),(input.mode==='essay'?42:49)*scale):undefined;
-  const paintedHeight=Math.min(h,titleHeight+(bodyFit?bodyFit.lines.length*bodyFit.actual*1.75:0));
-  const opacity=surfaceOpacity(asset,true);
+  const paintedHeight=vertical?h:Math.min(h,titleHeight+(bodyFit?bodyFit.lines.length*bodyFit.actual*1.75:0));
+  const opacity=effectiveSurfaceOpacity(input,asset);
   if(opacity>0){
     // Only wash behind actual lines, leaving the unused area of the artwork visible.
     ctx.save();ctx.shadowColor=light?'#15131b':'#fffaf5';ctx.shadowBlur=36;
@@ -220,12 +222,30 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+w/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
     return lines.length*actual*1.75;
   }
+  if(input.mode==='quote'&&!cover)block(ctx,plan.title,W*.10,H*.055,W*.80,74,23,font,ink,report);
+  if(vertical){const layout=drawVertical(ctx,title||body,x,y,w,h,(cover?68:46)*scale,font,ink);report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
   if(title)bodyY+=readingBlock(title,y,body?h*.56:h,76*scale,600)+(body?28:0);
   if(body)readingBlock(body,bodyY,Math.max(1,y+h-bodyY),(input.mode==='essay'?42:49)*scale);
   // No visible page furniture: the story itself provides the continuation.
   return report;
 }
 
+function drawComparisonSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,nowImage?:CanvasImageSource,futureImage?:CanvasImageSource):RenderReport{
+  const {width:W,height:H}=canvasSize(input),t=tokens(input),pair=plan.comparisons?.[index];
+  const report:RenderReport={warnings:[],width:W,height:H,minFontSize:200,...appearanceReport(input,asset)};
+  ctx.canvas.width=W;ctx.canvas.height=H;ctx.clearRect(0,0,W,H);
+  const half=(H-8)/2;
+  for(const [n,image] of [nowImage,futureImage].entries()){
+    const y=n*(half+8);ctx.fillStyle=n?t.line:t.bg;ctx.fillRect(0,y,W,half);
+    if(image){const im=image as HTMLImageElement,iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height,scale=Math.max(W/iw,half/ih),sw=W/scale,sh=half/scale;ctx.drawImage(image,(iw-sw)/2,(ih-sh)/2,sw,sh,0,y,W,half);}
+    else{ctx.fillStyle=n?t.paper:t.line;ctx.fillRect(140,y+half*.32,800,half*.68);ctx.fillStyle=t.bg;ctx.fillRect(240,y+half*.43,190,half*.34);ctx.fillRect(650,y+half*.40,180,half*.37);ctx.fillStyle=t.accent;ctx.globalAlpha=.25;ctx.fillRect(n?530:460,y+half*.88,n?120:260,28);ctx.globalAlpha=1;for(let prop=0;prop<(n?2:index+3);prop++){ctx.fillStyle=prop%2?t.accent:t.muted;ctx.fillRect(460+prop*31,y+half*.75,20,half*.11);}}
+    const opacity=surfaceOpacity(asset);ctx.save();ctx.globalAlpha=opacity;round(ctx,58,y+42,230,87,18,t.paper);ctx.restore();
+    block(ctx,String(n?input.futureYear:input.nowYear),78,y+53,190,68,44*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report,600);
+    const caption=n?pair?.futureCaption:pair?.nowCaption;
+    if(caption){paper(ctx,58,y+half-123,W-116,100,18,t.paper,asset);block(ctx,caption,78,y+half-113,W-156,82,32*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report);}
+  }
+  ctx.fillStyle=t.paper;ctx.fillRect(0,half,W,8);return report;
+}
 let fontsReady: Promise<void> | undefined;
 export function loadFonts() {
   fontsReady ??= Promise.all(['400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"'].map(font=>document.fonts.load(font,'美容習慣わたしをいたわる'))).then(()=>document.fonts.ready).then(()=>undefined);
@@ -236,11 +256,12 @@ export async function loadImage(src: string): Promise<HTMLImageElement> {
 }
 export async function renderCanvas(canvas: HTMLCanvasElement, plan: Plan, input: Input, index: number, asset: SlideAsset) {
   // Load all Japanese unicode subsets needed for this particular slide, not just the font family.
-  const s=plan.slides[index];const content=[s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
+  const s=plan.slides[index];const content=[plan.title,plan.comparisons?.[index]?.nowCaption,plan.comparisons?.[index]?.futureCaption,`${input.nowYear} ${input.futureYear}`,s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
   await loadFonts();
   await Promise.all(['400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
   const image=asset.image?await loadImage(asset.image):undefined;
-  return drawSlide(canvas.getContext('2d')!,plan,input,index,asset,image);
+  const futureImage=input.mode==='comparison'&&asset.futureImage?await loadImage(asset.futureImage):undefined;
+  return drawSlide(canvas.getContext('2d')!,plan,input,index,asset,image,futureImage);
 }
 export async function pngBlob(plan: Plan,input: Input,index: number,asset: SlideAsset) {
   const canvas=document.createElement('canvas'); const report=await renderCanvas(canvas,plan,input,index,asset);

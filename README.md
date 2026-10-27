@@ -11,6 +11,7 @@ Next.js App Router / React / TypeScript / Tailwind CSSで実装した、テー�
 - [しくみと開発・確認・復元の手順](docs/しくみと開発の進め方.md)
 - [v1.0.0のコード・公開バージョン対応表](docs/releases/v1.0.0.json)
 - [公開版の変更履歴](CHANGELOG.md)
+- [追加３モードの開発版・試し方（未公開）](docs/開発版_3モード.md)
 
 ## 依頼人向けの共有サイト
 

@@ -1,5 +1,7 @@
 import type {Input,SlideAsset,TextBox} from './schema';
 export function defaultTextBox(input:Pick<Input,'mode'>,cover=false):TextBox{
+  if(input.mode==='comic')return cover?{x:.10,y:.12,width:.80,height:.40}:{x:.18,y:.09,width:.64,height:.40};
+  if(input.mode==='quote')return cover?{x:.10,y:.16,width:.80,height:.48}:{x:.10,y:.28,width:.80,height:.34};
   return {x:.08,y:cover?.16:.09,width:.84,height:cover?.55:input.mode==='essay'?.75:.40};
 }
 export function clampTextBox(box:TextBox):TextBox{
