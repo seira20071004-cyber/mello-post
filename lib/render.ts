@@ -1,7 +1,7 @@
 import type { Input, Plan, SlideAsset } from './schema';
 import { tokens, readableInk } from './templates';
 import {canvasSize} from './formats';
-import {isNarrative} from './modes';
+import {isNarrative,hasQuoteFlow} from './modes';
 import {drawVertical} from './vertical-text';
 import {textBoxFor} from './text-layout';
 import {fontFor,colorFor,surfaceOpacity,effectiveSurfaceOpacity} from './appearance';
@@ -193,19 +193,21 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     ctx.save();ctx.globalAlpha=.16;ctx.fillStyle=t.accent;
     for(let n=0;n<4;n++){ctx.beginPath();ctx.ellipse(W*(.63+n*.07),H*(.90-n*.035),85,145,.4+n*.25,0,Math.PI*2);ctx.fill();}ctx.restore();
   }
-  const box=textBoxFor(input,asset,cover),x=box.x*W,y=box.y*H,w=box.width*W,h=box.height*H;
-  const ink=colorFor(input,asset),light=readableInk(ink)==='#241e24',font=fontFor(asset,input.mode==='comic'?'Noto Sans JP':t.font);
-  const scale=asset.fontScale||1,align=asset.textAlign||'left',vertical=(asset.writingMode||(!cover&&input.mode==='comic'?'vertical':'horizontal'))==='vertical';
+  const quoteFlow=hasQuoteFlow(input,plan),quoteEnding=quoteFlow&&index===plan.slides.length-1;
+  if(quoteEnding&&!image){round(ctx,30,30,W-60,H-60,24,t.line);round(ctx,W*.06,H*.12,W*.88,H*.64,16,t.paper);}
+  const box=textBoxFor(input,asset,cover,quoteEnding),x=box.x*W,y=box.y*H,w=box.width*W,h=box.height*H;
+  const ink=colorFor(input,asset),light=readableInk(ink)==='#241e24',font=fontFor(asset,input.mode==='comic'||(quoteFlow&&cover)?'Noto Sans JP':t.font);
+  const scale=asset.fontScale||1,align=asset.textAlign||(quoteEnding?'center':'left'),vertical=(asset.writingMode||(!cover&&input.mode==='comic'?'vertical':'horizontal'))==='vertical';
   const title=cover?s.title:'',body=s.body;
   let bodyY=y;
   function fitReading(text:string,height:number,size:number,weight=400){
     let actual=Math.round(size),lines:string[]=[];
     const pairedLines=text.trim().split(/\r?\n/).map(line=>line.trim());
-    const fixedPair=input.mode==='quote'&&!cover&&pairedLines.length===2&&pairedLines[0].endsWith('より、')&&pairedLines[1].endsWith('。')&&pairedLines.every(line=>line.length<=24);
+    const fixedPair=input.mode==='quote'&&!cover&&pairedLines.length===2&&((quoteFlow&&index>=plan.slides.length-2)||(pairedLines[0].endsWith('より、')&&pairedLines[1].endsWith('。')))&&pairedLines.every(line=>line.length<=24);
     for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=fixedPair?pairedLines:wrapText(ctx,text,w);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=w+8))break;}
     return {actual:Math.max(32,actual),overflow:actual<32,lines};
   }
-  const titleFit=title?fitReading(title,body?h*.56:h,76*scale,600):undefined;
+  const titleFit=title?fitReading(title,body?h*.56:h,(quoteFlow?112:76)*scale,600):undefined;
   const titleHeight=titleFit?titleFit.lines.length*titleFit.actual*1.75+(body?28:0):0;
   const bodyFit=body?fitReading(body,Math.max(1,h-titleHeight),(input.mode==='essay'?42:49)*scale):undefined;
   const paintedHeight=vertical?h:Math.min(h,titleHeight+(bodyFit?bodyFit.lines.length*bodyFit.actual*1.75:0));
@@ -224,9 +226,9 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+w/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
     return lines.length*actual*1.75;
   }
-  if(input.mode==='quote'&&!cover)block(ctx,plan.title,W*.10,H*.055,W*.80,74,23,font,ink,report);
+  if(input.mode==='quote'&&!cover&&!quoteEnding)block(ctx,plan.title,W*.10,H*.055,W*.80,74,23,font,ink,report);
   if(vertical){const layout=drawVertical(ctx,title||body,x,y,w,h,(cover?68:46)*scale,font,ink);report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
-  if(title)bodyY+=readingBlock(title,y,body?h*.56:h,76*scale,600)+(body?28:0);
+  if(title)bodyY+=readingBlock(title,y,body?h*.56:h,(quoteFlow?112:76)*scale,600)+(body?28:0);
   if(body)readingBlock(body,bodyY,Math.max(1,y+h-bodyY),(input.mode==='essay'?42:49)*scale);
   // No visible page furniture: the story itself provides the continuation.
   return report;

@@ -38,7 +38,7 @@ export const comparisonPairSchema=z.object({
   futureIllustration:z.string().trim().min(1).max(600),
   nowCaption:z.string().trim().max(40),futureCaption:z.string().trim().max(40),
 });
-export const storedPlanSchema=planSchema.extend({comparisons:z.array(comparisonPairSchema).min(3).max(10).optional()});
+export const storedPlanSchema=planSchema.extend({quoteFlow:z.literal('contrast-resolution-v1').optional(),comparisons:z.array(comparisonPairSchema).min(3).max(10).optional()});
 export type ComparisonPair=z.infer<typeof comparisonPairSchema>;
 export const visualReviewSchema = z.object({
   unexpectedText: z.boolean(), anatomyConcern: z.boolean(), styleConcern: z.boolean(),
@@ -64,6 +64,7 @@ export function requestedCount(theme: string): number | null {
   return kanji ? '一二三四五六七八九十'.indexOf(kanji[1]) + 1 : null;
 }
 export function inputIssues(input: Input): string[] {
+  if(input.mode==='quote'&&input.count<4)return ['ことばカードは、表紙・言い換え・振り返り・結びのため4枚以上にしてください'];
   if(input.mode==='comparison'&&input.futureYear<=input.nowYear)return ['未来の年は、現在の年より後にしてください'];
   if(input.mode!=='info')return [];
   const count = requestedCount(input.theme);
@@ -123,15 +124,18 @@ export function validateEngagement(plan:Plan,input:Input):string[]{
       const limit=readingBodyLimit(input);
       if(input.mode==='essay'&&slide.body.length>90&&!slide.body.includes('\n'))issues.push(`${i+1}枚目のエッセイは段落で改行し、読みやすくしてください`);
       if(slide.body.length>limit)issues.push(`${i+1}枚目の本文は${limit}文字以内にしてください`);
-      if(input.mode==='quote'&&i>0){
+      if(input.mode==='quote'&&i>0&&(!plan.quoteFlow||i<plan.slides.length-2)){
         const lines=slide.body.trim().split(/\r?\n/).map(line=>line.trim());
         if(lines.length!==2||!/^.+より、$/.test(lines[0])||!/^.+。$/.test(lines[1]||'')||lines.some(line=>line.length>24))issues.push(`${i+1}枚目は各行24文字以内の2行で「〜〜するより、」と「代わりにする具体的な行動。」を書いてください`);
       }
+      if(input.mode==='quote'&&plan.quoteFlow&&i>=plan.slides.length-2){const lines=slide.body.trim().split(/\r?\n/);if(lines.length!==2||lines.some(line=>!line.trim()||line.trim().length>24))issues.push('振り返りと結びは意味の切れ目で2行、各行24文字以内にしてください');if(i===plan.slides.length-1&&slide.body.length>40)issues.push('結びは40文字以内の短い希望の言葉にしてください');}
+      if(input.mode==='quote'&&plan.quoteFlow&&i>=plan.slides.length-2&&slide.body.includes('より、'))issues.push('最後の2枚は対句から離れ、共感できる後悔と、その返答になる希望の言葉で締めてください');
       if(i===0&&(!slide.title||slide.body))issues.push('物語・エッセイの表紙は短いタイトルだけにしてください');
       if(i===0&&slide.title.length>28)issues.push('物語・エッセイの表紙は28文字以内の短いフックにしてください');
       if(i>0&&slide.title)issues.push('物語・エッセイの中面は見出しを付けず、本文だけにしてください');
       if(slide.emphasis||slide.nextTeaser)issues.push('物語・エッセイでは強調帯・次ページ予告を付けず、文章の流れでつないでください');
     }
+    if(input.mode==='quote'&&plan.quoteFlow&&plan.slides.at(-1)?.illustration===plan.slides[0].illustration)issues.push('結びは共通背景とは別の背景指示にしてください');
     if(plan.followCTA)issues.push('物語・エッセイのフォロー案内はキャプションにだけ入れてください');
     return [...new Set(issues)];
   }

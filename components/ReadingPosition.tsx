@@ -2,9 +2,9 @@
 import {useRef} from 'react';
 import type {Input,SlideAsset,TextBox} from '@/lib/schema';
 import {textBoxFor,clampTextBox} from '@/lib/text-layout';
-export default function ReadingPosition({input,asset,cover,onChange}:{input:Input;asset:SlideAsset;cover:boolean;onChange:(box:TextBox)=>void}){
+export default function ReadingPosition({input,asset,cover,ending=false,onChange}:{input:Input;asset:SlideAsset;cover:boolean;ending?:boolean;onChange:(box:TextBox)=>void}){
   const area=useRef<HTMLDivElement>(null),drag=useRef<{id:number;x:number;y:number;box:TextBox}|undefined>(undefined);
-  const box=textBoxFor(input,asset,cover);
+  const box=textBoxFor(input,asset,cover,ending);
   return <div className="position-overlay" ref={area}>
     <div className="reading-handle" role="slider" aria-label="文字エリアの位置。矢印キーで移動" aria-valuemin={4} aria-valuemax={96} aria-valuenow={Math.round(box.y*100)} tabIndex={0}
       style={{left:`${box.x*100}%`,top:`${box.y*100}%`,width:`${box.width*100}%`,height:`${box.height*100}%`}}
