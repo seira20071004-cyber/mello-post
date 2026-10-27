@@ -22,7 +22,7 @@ describe('positive story endings with an invitation on the same card',()=>{
   const mock=mockStory(plan);vi.stubGlobal('fetch',mock);
   const response=await planPost(new Request('http://localhost:3000/api/plan',{method:'POST',headers:{'content-type':'application/json',origin:'http://localhost:3000'},body:JSON.stringify({requestId:crypto.randomUUID(),input:{...initialInput,mode,theme:plan.title,accountTopic:'親子の小さな幸せ'}})}));
   const data=await response.json();expect(response.status).toBe(200);expect(data.result.slides.at(-1).body).toBe(plan.slides.at(-1)!.body);expect(data.result.slides.slice(0,-1).every((s:{body:string})=>!s.body.includes('フォロー'))).toBe(true);expect(data.usage).toMatchObject({text:1,review:2,image:0});
-  for(const call of mock.mock.calls){const sent=JSON.parse(call[1].body);expect(sent.instructions).toContain('【最終ページ：この物語から、読者に身近な幸せを届ける】');expect(sent.instructions).toContain('同じ最終ページに、短いフォロー案内');expect(sent.instructions).toContain('input.accountTopic');}
+  for(const call of mock.mock.calls){const sent=JSON.parse(call[1].body);expect(sent.instructions).toContain('【最終ページ：この物語から、読者に身近な幸せを届ける】');expect(sent.instructions).toContain('同じ最終ページに、短いフォロー案内');expect(sent.instructions).toContain('input.accountTopic');expect(sent.instructions).toContain('読後の見え方が変わる一言');expect(sent.instructions).toContain('説明的な要約に戻さない');}
  });
  it.each(cases)('rejects a %s reviewer dropping the invitation, while legacy drafts still open',async(mode,plan)=>{
   const old=structuredClone(plan);old.slides.at(-1)!.body='子どもと見つける宝物が、いつもの帰り道にある。';expect(validatePlan(old,{...initialInput,mode})).toEqual([]);

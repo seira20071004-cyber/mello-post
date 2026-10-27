@@ -1,7 +1,7 @@
 import type {Plan} from './schema';
 import {storySample} from './reading-samples';
 const cartoon='Original rounded cartoon line art, flat pastel colors, clear charcoal outlines, white background. Mother around 32 with tied brown hair and a sage shirt; small son with a pale yellow jacket. Characters in the lower half. Upper central 45 percent empty. No text or effects lettering.';
-const comicBodies=['','迎えにいくと、\n息子が小さな袋を\n見せてくれた。','「今日はね、\n葉っぱを集めたよ」','袋の中から、\n丸い葉っぱを\n一枚選んでくれた。','「これ、ママの」\n私はしゃがんで\n手を出した。','葉っぱ一枚にも、\n「ママにあげたい」が詰まっている。\n\n親子の小さな幸せを読むならフォローを。'];
+const comicBodies=['','迎えにいくと、\n息子が小さな袋を\n見せてくれた。','「今日はね、\n葉っぱを集めたよ」','袋の中から、\n丸い葉っぱを\n一枚選んでくれた。','「これ、ママの」\n私はしゃがんで\nその葉っぱを受け取った。','何でもない葉っぱを、\nこんなに大事にしたい日がくるなんて。\n\n親子の日々を読むならフォローを。'];
 export const comicSample:Plan={...storySample,title:'帰り道の小さなおみやげ',artDirection:cartoon,slides:comicBodies.map((body,i)=>({...storySample.slides[i],title:i===0?'帰り道が\n少し長くなった理由':'',body,illustration:cartoon+' Scene: a mother and son returning home with a little bag of collected leaves.'})),caption:'帰り道の、ささやかな贈りものを描いた創作の漫画です。\n今日の小さな出来事を、また読みたい方はフォローしていただけたらうれしいです。\n#子育て #親子の時間 #日常漫画'};
 const card='Original small needlework-like mother and child motif at the bottom 25 percent of a warm ivory paper background. Very subtle fabric texture. Upper 75 percent almost plain and clear. Mother in her 30s, gentle silhouette. No writing, logos or signatures.';
 const words=['','次の予定を急かすより、\n見つけた葉っぱを一緒に見る。','先に答えを教えるより、\n話し終えるまで耳を傾ける。','うまく描けたか聞くより、\n描いている横顔を見つめる。','もっとゆっくり向き合えたら。\n寝顔を見て、そう思う夜がある。','その思いに気づいた今から、\nまた話を聞く時間をつくれる。'];
