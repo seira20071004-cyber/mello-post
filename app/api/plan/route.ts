@@ -1,3 +1,4 @@
+import {essayEndingIssues} from '@/lib/server/essays';
 import { z } from 'zod';
 import { inputSchema, planSchema, storedPlanSchema, comparisonPairSchema, slideSchema, itemSchema, inputIssues, validatePlan, validateEngagement } from '@/lib/schema';
 import { AppError, authorize, readBody, referenceSchema, withJob, structured, errorResponse } from '@/lib/server/api';
@@ -24,7 +25,7 @@ export async function POST(request:Request) {
         const slide=regenerated.slide;
         slide.itemIds=old.itemIds;slide.layout=old.layout;
         const next={...body.plan,caption:regenerated.caption,followCTA:regenerated.followCTA||body.plan.followCTA,items:body.plan.items.map(item=>regenerated.items.find(i=>i.id===item.id)||item),slides:body.plan.slides.map((s,i)=>i===body.index?slide:s)};
-        const errors=[...validatePlan(next,body.input),...validateEngagement(next,body.input),...((body.input.mode==='story'||body.input.mode==='comic')&&body.index===next.slides.length-1?storyEndingIssues(next):[])];if(errors.length)throw new AppError(errors.join(' / '),422);
+        const errors=[...validatePlan(next,body.input),...validateEngagement(next,body.input),...((body.input.mode==='story'||body.input.mode==='comic')&&body.index===next.slides.length-1?storyEndingIssues(next):[]),...(body.index===next.slides.length-1?essayEndingIssues(next,body.input):[])];if(errors.length)throw new AppError(errors.join(' / '),422);
         return next;
       }
       if(body.input.mode==='story'||body.input.mode==='comic')return generateStory(body.input,body.reference,usage);
@@ -32,10 +33,10 @@ export async function POST(request:Request) {
       const content:unknown[]=[{type:'input_text',text:JSON.stringify({input:body.input,composition})}];
       if(body.reference)content.push({type:'input_image',image_url:body.reference,detail:'low'});
       let plan=await structured(outputSchema,editorPrompt(body.input),[{role:'user',content}],usage);
-      plan=await structured(outputSchema,editorPrompt(body.input)+'\n'+modeReviewPrompt(body.input),JSON.stringify({input:body.input,composition,plan,errors:[...validatePlan(plan,body.input),...validateEngagement(plan,body.input)]}),usage,'review');
+      plan=await structured(outputSchema,editorPrompt(body.input)+'\n'+modeReviewPrompt(body.input),JSON.stringify({input:body.input,composition,plan,errors:[...validatePlan(plan,body.input),...validateEngagement(plan,body.input),...essayEndingIssues(plan,body.input)]}),usage,'review');
       plan=finishReadingPath(plan,body.input);
-      let errors=[...validatePlan(plan,body.input),...validateEngagement(plan,body.input)];
-      if(errors.length){plan=await structured(outputSchema,editorPrompt(body.input)+'\n'+modeReviewPrompt(body.input)+'\ncompositionの各スライドのitemIdsを厳守し、示されたエラーをすべて直す。',JSON.stringify({input:body.input,composition,plan,errors}),usage,'review');plan=finishReadingPath(plan,body.input);errors=[...validatePlan(plan,body.input),...validateEngagement(plan,body.input)];}
+      let errors=[...validatePlan(plan,body.input),...validateEngagement(plan,body.input),...essayEndingIssues(plan,body.input)];
+      if(errors.length){plan=await structured(outputSchema,editorPrompt(body.input)+'\n'+modeReviewPrompt(body.input)+'\ncompositionの各スライドのitemIdsを厳守し、示されたエラーをすべて直す。',JSON.stringify({input:body.input,composition,plan,errors}),usage,'review');plan=finishReadingPath(plan,body.input);errors=[...validatePlan(plan,body.input),...validateEngagement(plan,body.input),...essayEndingIssues(plan,body.input)];}
       if(errors.length)throw new AppError('校正後も整合性を確認できませんでした: '+errors.join(' / '),422);
       return plan;
     });

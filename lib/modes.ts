@@ -26,3 +26,10 @@ export function pendingImageCalls(input:Pick<Input,'mode'>,assets:Pick<SlideAsse
 
 export function hasQuoteFlow(input:Pick<Input,'mode'>,plan?:Plan|null){return input.mode==='quote'&&plan?.quoteFlow==='contrast-resolution-v1';}
 export function backgroundGroups(input:Pick<Input,'mode'>,count:number,plan?:Plan|null):number[][]{if(!count)return [];const all=Array.from({length:count},(_,i)=>i);return input.mode==='quote'&&(!plan||hasQuoteFlow(input,plan))&&count>1?[all.slice(0,-1),[count-1]]:[all];}
+
+export function recommendedSlideCount(mode:Input['mode']){return mode==='essay'?7:6;}
+export function inputForMode(input:Input,mode:Input['mode']):Input{
+  if(mode===input.mode)return input;
+  const count=mode==='essay'?7:input.mode==='essay'&&input.count===7?6:input.count;
+  return {...input,mode,count:mode==='quote'?Math.max(4,count):count};
+}

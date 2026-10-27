@@ -136,7 +136,7 @@ export function validateEngagement(plan:Plan,input:Input):string[]{
       if(slide.emphasis||slide.nextTeaser)issues.push('物語・エッセイでは強調帯・次ページ予告を付けず、文章の流れでつないでください');
     }
     if(input.mode==='quote'&&plan.quoteFlow&&plan.slides.at(-1)?.illustration===plan.slides[0].illustration)issues.push('結びは共通背景とは別の背景指示にしてください');
-    if(plan.followCTA)issues.push(input.mode==='story'||input.mode==='comic'?'物語のフォロー案内は、専用の帯ではなく最終ページの本文に添えてください':'エッセイのフォロー案内はキャプションにだけ入れてください');
+    if(plan.followCTA)issues.push(input.mode==='story'||input.mode==='comic'?'物語のフォロー案内は、専用の帯ではなく最終ページの本文に添えてください':'エッセイのフォロー案内は、専用の帯ではなく最終ページの本文に添えてください');
     return [...new Set(issues)];
   }
   const emptyPromise=/(?:説明|紹介|解説|お伝え)(?:していき|いたし|し)ます|見ていきましょう/;

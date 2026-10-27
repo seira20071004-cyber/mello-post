@@ -2,7 +2,7 @@ import {z} from 'zod';
 import {inputIssues,itemSchema,planSchema,requestedCount,slideSchema,type Input,type Plan,comparisonPairSchema,readingBodyLimit} from './schema';
 
 export function compositionFor(input:Input,itemCount=requestedCount(input.theme)??input.count-2){
-  if(input.mode!=='info')return {slideCount:input.count,itemCount:0,slides:Array.from({length:input.count},(_,i)=>({slide:i+1,role:i===0?'cover':i===input.count-1?'ending':input.mode==='quote'?(i===input.count-2?'reflection':'contrast'):input.mode==='story'?'scene':'reflection',itemIds:[] as number[]}))};
+  if(input.mode!=='info')return {slideCount:input.count,itemCount:0,slides:Array.from({length:input.count},(_,i)=>({slide:i+1,role:i===0?'cover':i===input.count-1?(input.mode==='essay'?'summary':'ending'):input.mode==='quote'?(i===input.count-2?'reflection':'contrast'):input.mode==='story'?'scene':'reflection',itemIds:[] as number[]}))};
   if(inputIssues(input).length||itemCount<1||itemCount>(input.count-2)*2)throw new Error('指定の枚数に項目を配置できません');
   let next=1,extra=Math.max(0,itemCount-(input.count-2));
   const middle=Array.from({length:input.count-2},(_,index)=>{const count=next>itemCount?0:extra-->0?2:1;return {slide:index+2,role:count?'content':'example',itemIds:Array.from({length:count},()=>next++)};});

@@ -1,3 +1,4 @@
+import {essayEndingIssues} from '@/lib/server/essays';
 import { z } from 'zod';
 import { inputSchema, planSchema, storedPlanSchema, validatePlan, validateEngagement, inputIssues } from '@/lib/schema';
 import { authorize, readBody, withJob, structured, AppError, errorResponse } from '@/lib/server/api';
@@ -13,7 +14,7 @@ export async function POST(request:Request) {
       const reviewed=finishReadingPath(await structured(generationSchema(b.input,b.plan.items.length),editorPrompt(b.input)+'\n'+modeReviewPrompt(b.input),JSON.stringify({...b,composition:compositionFor(b.input,b.plan.items.length)}),usage,'review'),b.input);
       // Quote-card revisions keep the accepted cover and shared artwork intact.
       const plan=b.input.mode==='quote'?{...b.plan,quoteFlow:reviewed.quoteFlow,caption:reviewed.caption,slides:b.plan.slides.map((slide,i)=>i===0?slide:{...slide,body:reviewed.slides[i].body,...(i===b.plan.slides.length-1?{illustration:reviewed.slides[i].illustration}:{})})}:reviewed;
-      const errors=[...validatePlan(plan,b.input),...validateEngagement(plan,b.input)];if(errors.length)throw new AppError(errors.join(' / '),422);return plan;
+      const errors=[...validatePlan(plan,b.input),...validateEngagement(plan,b.input),...essayEndingIssues(plan,b.input)];if(errors.length)throw new AppError(errors.join(' / '),422);return plan;
     }));
   }catch(error){return errorResponse(error);}
 }
