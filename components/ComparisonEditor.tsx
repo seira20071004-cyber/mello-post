@@ -2,7 +2,7 @@
 import type {Input,ComparisonPair,SlideAsset} from '@/lib/schema';
 import type {ComparisonPanel} from '@/lib/comparison';
 export function ComparisonTextEditor({input,pair,onPairChange,onYearChange}:{input:Input;pair:ComparisonPair;onPairChange:(patch:Partial<ComparisonPair>)=>void;onYearChange:(key:'nowYear'|'futureYear',year:number)=>void}){
-  return <div className="comparison-edit"><h3>{pair.place}</h3><p className="muted">上下に同じ場所の絵を並べます。説明文は空欄のままでも使えます。</p><div className="two-fields">
+  return <div className="comparison-edit"><h3>{pair.place}</h3><p className="muted">人物を描かず、同じ場所の小物や部屋の変化を上下で見せます。説明文は空欄のままでも使えます。</p><div className="two-fields">
     <div className="field"><label className="field-title" htmlFor="edit-now-year">現在の年</label><input id="edit-now-year" type="number" min="1900" max="2200" value={input.nowYear} onChange={e=>onYearChange('nowYear',Number(e.target.value))}/></div>
     <div className="field"><label className="field-title" htmlFor="edit-future-year">未来の年</label><input id="edit-future-year" type="number" min={input.nowYear+1} max="2250" value={input.futureYear} onChange={e=>onYearChange('futureYear',Number(e.target.value))}/></div></div>
     <small className="muted">年表示の変更は無料です。絵の中の年代は、画像を再生成した時に反映されます。</small>

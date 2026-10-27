@@ -25,3 +25,7 @@ The user designated the current application as the first stable version on 2026-
 - Creating a separate hosted test environment, changing production credentials, or enabling GitHub branch-protection rules requires its own appropriate authorization; do not claim these are already configured.
 
 Baseline setup exception: the user explicitly requested the already accepted application be saved to main as v1.0.0. Documentation, CI triggers for develop, release records and this policy may be committed to main for that setup without publishing the Site.
+
+## Accepted mode checkpoint
+
+On 2026-10-27 the user accepted the quote-card mode as complete at `2c7f049`. Preserve its large cover, coherent contrasts, reflective penultimate card, hopeful final card, two-background generation and saved-draft behavior while improving other modes. This acceptance does not authorize merging develop to main or publishing. Change quote-card behavior only for an explicit request about that mode.
