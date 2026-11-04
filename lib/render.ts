@@ -14,6 +14,10 @@ function region(report:RenderReport,text:string,x:number,y:number,width:number,h
   const dx=(offset?.x||0)*report.width,dy=(offset?.y||0)*report.height;
   const r={id,text,target,x:x+dx,y:y+dy,width,height};report.textRegions.push(r);return r;
 }
+function regionDimensions(report:RenderReport,width:number,height:number){
+  const saved=report.textPlacements?.[`text-${report.textRegions?.length||0}`];
+  return {width:saved?.width===undefined?width:saved.width*report.width,height:saved?.height===undefined?height:saved.height*report.height,customHeight:saved?.height!==undefined};
+}
 type Ctx = CanvasRenderingContext2D;
 const opening = /[（「『【〈《([]$/;
 const closing = /^[、。，．！？：；）』」】〉》\]ーぁぃぅぇぉっゃゅょァィゥェォッャュョ]/;
@@ -43,6 +47,7 @@ function paper(ctx:Ctx,x:number,y:number,w:number,h:number,r:number,fill:string,
 }
 function appearanceReport(input:Input,asset:SlideAsset):Pick<RenderReport,'fontOverride'|'colorOverride'|'textPlacements'>{return {textPlacements:asset.textPlacements,fontOverride:asset.textFont&&asset.textFont!=='template'?fontFor(asset,'Noto Sans JP'):undefined,colorOverride:asset.textColor&&asset.textColor!=='dark'?colorFor(input,asset):undefined};}
 function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: number, size: number, font: string, color: string, report: RenderReport, weight=400,target?:TextTarget) {
+  const dimensions=regionDimensions(report,w,h);w=dimensions.width;h=dimensions.height;
   font=report.fontOverride||font;color=report.colorOverride||color;
   let lines: string[]=[]; let actual = Math.round(size); const minimum=Math.min(actual,32);
   for (; actual >= minimum; actual--) {
@@ -52,7 +57,7 @@ function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: numbe
   }
   if (actual<minimum) { report.warnings.push('文章が表示領域を超えています。本文を短くしてください。'); actual=minimum; }
   report.minFontSize = Math.min(report.minFontSize, actual);
-  const r=region(report,text,x,y,w,Math.min(h,lines.length*actual*1.55),target);x=r.x;y=r.y;
+  const r=region(report,text,x,y,w,dimensions.customHeight?h:Math.min(h,lines.length*actual*1.55),target);x=r.x;y=r.y;
   ctx.font=`${weight} ${actual}px "${font}"`; ctx.fillStyle=color; ctx.textBaseline='top';
   ctx.save(); ctx.beginPath(); ctx.rect(x,y,w+8,h); ctx.clip();
   lines.forEach((line,i)=>ctx.fillText(line,x,y+i*actual*1.55)); ctx.restore();
@@ -208,11 +213,11 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   const scale=asset.fontScale||1,align=asset.textAlign||(quoteEnding?'center':'left'),vertical=(asset.writingMode||(!cover&&input.mode==='comic'?'vertical':'horizontal'))==='vertical';
   const title=cover?s.title:'',body=s.body;
   let bodyY=y;
-  function fitReading(text:string,height:number,size:number,weight=400){
+  function fitReading(text:string,height:number,size:number,weight=400,width=w){
     let actual=Math.round(size),lines:string[]=[];
     const pairedLines=text.trim().split(/\r?\n/).map(line=>line.trim());
     const fixedPair=input.mode==='quote'&&!cover&&pairedLines.length===2&&((quoteFlow&&index>=plan.slides.length-2)||(pairedLines[0].endsWith('より、')&&pairedLines[1].endsWith('。')))&&pairedLines.every(line=>line.length<=24);
-    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=fixedPair?pairedLines:wrapText(ctx,text,w);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=w+8))break;}
+    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=fixedPair?pairedLines:wrapText(ctx,text,width);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=width+8))break;}
     return {actual:Math.max(32,actual),overflow:actual<32,lines};
   }
   const titleFit=title?fitReading(title,body?h*.56:h,(quoteFlow?112:76)*scale,600):undefined;
@@ -220,7 +225,7 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   const bodyFit=body?fitReading(body,Math.max(1,h-titleHeight),(input.mode==='essay'?42:49)*scale):undefined;
   const paintedHeight=vertical?h:Math.min(h,titleHeight+(bodyFit?bodyFit.lines.length*bodyFit.actual*1.75:0));
   const opacity=effectiveSurfaceOpacity(input,asset);
-  const independentlyMoved=Object.values(asset.textPlacements||{}).some(p=>p.x!==0||p.y!==0);
+  const independentlyMoved=Object.values(asset.textPlacements||{}).some(p=>p.x!==0||p.y!==0||p.width!==undefined||p.height!==undefined);
   function readingSurface(px:number,py:number,pw:number,ph:number){
     if(opacity<=0)return;ctx.save();ctx.shadowColor=light?'#15131b':'#fffaf5';ctx.shadowBlur=36;
     round(ctx,px-22,py-24,pw+44,ph+48,24,light?`rgba(20,19,26,${opacity})`:`rgba(255,252,247,${opacity})`);ctx.restore();
@@ -228,17 +233,18 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   if(!independentlyMoved)readingSurface(x,y,w,paintedHeight);
   function readingBlock(text:string,top:number,height:number,size:number,weight=400,key:'title'|'body'='body'){
     if(!text)return 0;
-    const {actual,lines,overflow}=fitReading(text,height,size,weight);
+    const dimensions=regionDimensions(report,w,height),width=dimensions.width;height=dimensions.height;
+    const {actual,lines,overflow}=fitReading(text,height,size,weight,width);
     if(overflow)report.warnings.push('文章が表示領域を超えています。文章を短くするか、文字エリアを広げてください。');
     report.minFontSize=Math.min(report.minFontSize,actual);ctx.font=`${weight} ${actual}px "${font}"`;ctx.fillStyle=ink;ctx.textBaseline='top';
-    const r=region(report,text,x,top,w,Math.min(height,lines.length*actual*1.75),{kind:'slide',key});const dx=r.x-x,dy=r.y-top;
-    if(independentlyMoved)readingSurface(r.x,r.y,w,r.height);
-    ctx.save();ctx.translate(dx,dy);ctx.beginPath();ctx.rect(x,top,w+8,height);ctx.clip();ctx.textAlign=align;
-    lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+w/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
+    const r=region(report,text,x,top,width,dimensions.customHeight?height:Math.min(height,lines.length*actual*1.75),{kind:'slide',key});const dx=r.x-x,dy=r.y-top;
+    if(independentlyMoved)readingSurface(r.x,r.y,width,Math.min(height,lines.length*actual*1.75));
+    ctx.save();ctx.translate(dx,dy);ctx.beginPath();ctx.rect(x,top,width+8,height);ctx.clip();ctx.textAlign=align;
+    lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+width/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
     return lines.length*actual*1.75;
   }
   if(input.mode==='quote'&&!cover&&!quoteEnding)block(ctx,plan.title,W*.10,H*.055,W*.80,74,23,font,ink,report,400,{kind:'plan',key:'title'});
-  if(vertical){const r=region(report,title||body,x,y,w,h,{kind:'slide',key:title?'title':'body'});if(independentlyMoved)readingSurface(r.x,r.y,w,h);const layout=drawVertical(ctx,title||body,r.x,r.y,w,h,(cover?68:46)*scale,font,ink);report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
+  if(vertical){const dimensions=regionDimensions(report,w,h),width=dimensions.width,height=dimensions.height;const r=region(report,title||body,x,y,width,height,{kind:'slide',key:title?'title':'body'});if(independentlyMoved)readingSurface(r.x,r.y,width,height);const layout=drawVertical(ctx,title||body,r.x,r.y,width,height,(cover?68:46)*scale,font,ink);report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
   if(title)bodyY+=readingBlock(title,y,body?h*.56:h,(quoteFlow?112:76)*scale,600,'title')+(body?28:0);
   if(body)readingBlock(body,bodyY,Math.max(1,y+h-bodyY),(input.mode==='essay'?42:49)*scale);
   // No visible page furniture: the story itself provides the continuation.

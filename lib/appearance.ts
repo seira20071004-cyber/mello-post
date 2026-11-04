@@ -7,7 +7,7 @@ export const appearanceSchema=z.object({
   textColor:z.union([z.enum(['dark','light']),z.string().regex(/^#[0-9a-fA-F]{6}$/)]).optional(),
   textSurface:z.enum(['soft','none']).optional(),
   textSurfaceOpacity:z.number().min(0).max(1).optional(),
-  textPlacements:z.record(z.string().regex(/^text-\d+$/),z.object({x:z.number().min(-1).max(1),y:z.number().min(-1).max(1)})).optional(),
+  textPlacements:z.record(z.string().regex(/^text-\d+$/),z.object({x:z.number().min(-1).max(1),y:z.number().min(-1).max(1),width:z.number().min(.12).max(1).optional(),height:z.number().min(.045).max(1).optional()})).optional(),
 });
 export type Appearance=z.infer<typeof appearanceSchema>;
 export const fontOptions={template:'デザインに合わせる',serif:'明朝体 — 上品・やわらかい',sans:'ゴシック体 — すっきり読みやすい',rounded:'丸ゴシック — やさしい丸文字',handwritten:'手書き — 素朴な日記風',literary:'装飾明朝 — 絵本のような雰囲気'} as const;

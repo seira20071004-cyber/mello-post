@@ -1,5 +1,5 @@
 import type {Input} from './schema';
-export type TutorialStep='theme'|'art-style'|'mode'|'details'|'target'|'count'|'now-year'|'future-year'|'age'|'ratio'|'account'|'template'|'color'|'tone'|'reference'|'quality'|'generate'|'edit'|'images'|'caption'|'save'|'download'|'open-library'|'library';
+export type TutorialStep='theme'|'art-style'|'mode'|'details'|'target'|'count'|'now-year'|'future-year'|'age'|'ratio'|'account'|'reference'|'quality'|'generate'|'edit'|'images'|'caption'|'save'|'download'|'open-library'|'library';
 export type TutorialHint={id:TutorialStep;title:string;body:string;action?:boolean;optional?:boolean};
 export function tutorialSteps(mode:Input['mode']):TutorialHint[]{return [
   {id:'theme',title:'まずは、テーマを入力しましょう',body:'どんな投稿にしたいですか？ 日常の出来事や伝えたいことを、あなたの言葉で２文字以上入力してください。例：寝かしつけのあとに気づいた、今日の小さな幸せ。'},
@@ -12,7 +12,6 @@ export function tutorialSteps(mode:Input['mode']):TutorialHint[]{return [
   {id:'age',title:'登場する大人の見た目を選びます',body:'初期値は30代です。「届けたい相手」の年齢とは別で、イラストに登場する大人の見た目を決める設定です。'},
   {id:'ratio',title:'画像の形を選びましょう',body:'Instagramのフィード投稿なら4:5がおすすめです。正方形や9:16も選べます。'},
   {id:'account',title:'普段の発信内容も添えられます',body:'「子育ての声かけ」「親子の会話」など、今後も届けたい発信内容があれば入力します。フォロー案内に使います。空欄でも大丈夫です。',optional:true},
-  {id:'tone',title:'文章の雰囲気を選びましょう',body:'親しみやすく、落ち着いて、明るく、簡潔に。伝えたい相手や思いに合う雰囲気を選びます。'},
   {id:'reference',title:'参考画像があれば添えられます',body:'色使いや雰囲気の参考にしたい画像を設定できます。必須ではありません。画像は生成時にOpenAIへ送信されるので、使ってよいものを選んでください。',optional:true},
   {id:'quality',title:'生成する画像の品質を選びます',body:'最初は「お試し（低コスト）」がおすすめです。品質を上げるとAPI利用料も変わります。'},
   {id:'generate',title:'入力できたら、実際に文章を生成します',body:'下の「AIで投稿の構成をつくる」を押してください。ここからは実際のAI生成で、API利用料がかかります。チュートリアルの案内自体は無料です。生成に失敗した場合は、入力を確認して同じボタンからやり直せます。',action:true},
