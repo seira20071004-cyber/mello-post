@@ -20,7 +20,7 @@ export function tutorialSteps(mode:Input['mode']):TutorialHint[]{return [
   {id:'caption',title:'キャプションも確認しましょう',body:'Instagramの投稿に添える文章です。あなたの言葉に直したり、ハッシュタグを調整できます。'},
   {id:'save',title:'仕上がったら「保存へ進む」を押します',body:'文章と背景を確認したら、実際の「保存へ進む」ボタンからダウンロード画面へ進んでください。',action:true},
   {id:'download',title:'実際に画像をダウンロードしましょう',body:'「全スライドをZIPで保存」で画像とキャプションをまとめて保存できます。各画像のPNGボタンから１枚だけ保存することもできます。端末に保存したものを、ご自身でInstagramへ投稿します。',action:true},
-  {id:'open-library',title:'あとから編集できる場所も見てみましょう',body:'「保存してマイスタジオへ」を押してください。今つくった投稿はこのブラウザに保存されていて、あとから続きを編集できます。',action:true},
+  {id:'open-library',title:'あとから編集できる場所も見てみましょう',body:'投稿は自動保存されています。左側のメニュー（スマホは画面上部）の「マイスタジオ」を開いてみましょう。あとから続きを編集できます。',action:true},
   {id:'library',title:'準備完了。mellōを活用しましょう！',body:'ここがマイスタジオです。「続きから編集」で文章やデザインを直せます。新しい投稿をつくるときは「投稿をつくる」から。これからも、あなたの想いをかたちにしていきましょう。'},
 ];}
 export function nextTutorialStep(step:TutorialStep,mode:Input['mode'],direction=1):TutorialStep{
