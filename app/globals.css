@@ -48,3 +48,5 @@
 .handle-w{left:-8px}.handle-e{right:-8px}
 .handle-n::after,.handle-s::after,.handle-w::after,.handle-e::after{display:none}
 .direct-resize-handle:is(.handle-n,.handle-s,.handle-w,.handle-e):is(:hover,:focus-visible){background:#a4537014;outline:none}
+
+.direct-text-frame.editing{visibility:hidden}.direct-inline-editor{position:absolute;z-index:4;pointer-events:auto;margin:0;padding:0;border:1px solid #a45370;border-radius:0;background:#fffdf9;box-shadow:none;outline:none;resize:none;min-height:0;line-height:1.7;overflow:auto;touch-action:auto}.direct-inline-editor:focus{outline:1px solid #a45370;box-shadow:none}
