@@ -21,12 +21,12 @@ describe('actual Studio tutorial',()=>{
   it.each(['story','comic','essay','info','comparison','quote'] as const)('guides every real input and action for %s',mode=>{
     const steps=tutorialSteps(mode).map(s=>s.id);
     expect(new Set(steps).size).toBe(steps.length);
-    expect(steps.slice(0,6)).toEqual(['theme','art-style','mode','details','target','count']);
+    expect(steps.slice(0,7)).toEqual(['theme','art-style','reference','mode','details','target','count']);
     expect(steps.includes('future-year')).toBe(mode==='comparison');
     expect(steps.slice(-8)).toEqual(['generate','edit','images','caption','save','download','open-library','library']);
     expect(nextTutorialStep('theme',mode,-1)).toBe('theme');
     expect(nextTutorialStep('library',mode)).toBe('library');
-    expect(nextTutorialStep('count',mode)).toBe(mode==='comparison'?'now-year':'age');
+    expect(nextTutorialStep('count',mode)).toBe(mode==='comparison'?'now-year':'ratio');
   });
   it('requires meaningful theme and ordered years, and never advances paid actions by Next',()=>{
     expect(canAdvanceTutorial('theme',initialInput,false)).toBe(false);

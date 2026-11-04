@@ -12,7 +12,7 @@ export const inputSchema = z.object({
   aspectRatio:z.enum(['4:5','1:1','9:16']).default('4:5'),
   accountTopic:z.string().trim().max(100).default(''),
   mode:z.enum(['story','essay','info','comic','comparison','quote']).default('info'),
-  artStyle:z.enum(['auto','watercolor','comic','pencil','pastel']).default('auto'),
+  artStyle:z.enum(['auto','watercolor','comic','pencil','pastel','reference']).default('auto'),
   characterAge:z.enum(['30s','40s','50s','60s']).default('30s'),
   nowYear:z.number().int().min(1900).max(2200).default(2026),
   futureYear:z.number().int().min(1901).max(2250).default(2046),
