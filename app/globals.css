@@ -40,4 +40,11 @@
 .art-style-options{display:flex;gap:8px;flex-wrap:wrap}.art-style-options button{flex:1;min-width:110px;padding:13px 10px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px}.art-style-options button.selected{background:#fcf3f6;border-color:var(--pink);box-shadow:0 0 0 1px var(--pink)}.art-style-options strong,.art-style-options small{display:block}.art-style-options small{color:var(--muted);margin-top:5px;font-size:10px}
 .direct-text-frame{position:absolute;pointer-events:none;border-radius:4px}.direct-text-frame.active{outline:1px solid #a45370}.direct-text-frame>.direct-text-hit{inset:0;width:100%;height:100%}.direct-resize-handle{display:none;position:absolute;z-index:2;width:22px;height:22px;border:0;background:transparent;padding:4px;pointer-events:auto;touch-action:none;min-height:0}.direct-resize-handle::after{content:'';display:block;width:14px;height:14px;background:#fff;border:2px solid #a45370;border-radius:50%;box-shadow:0 1px 4px #403b3b33}.direct-text-frame.active .direct-resize-handle,.direct-text-frame:hover .direct-resize-handle,.direct-text-frame:focus-within .direct-resize-handle{display:block}.handle-nw{left:-11px;top:-11px;cursor:nwse-resize}.handle-ne{right:-11px;top:-11px;cursor:nesw-resize}.handle-sw{left:-11px;bottom:-11px;cursor:nesw-resize}.handle-se{right:-11px;bottom:-11px;cursor:nwse-resize}
 
-.handle-n,.handle-s{left:50%;transform:translateX(-50%);cursor:ns-resize}.handle-n{top:-11px}.handle-s{bottom:-11px}.handle-w,.handle-e{top:50%;transform:translateY(-50%);cursor:ew-resize}.handle-w{left:-11px}.handle-e{right:-11px}.handle-n::after,.handle-s::after{height:8px;margin-top:3px;border-radius:4px}.handle-w::after,.handle-e::after{width:8px;margin-left:3px;border-radius:4px}
+/* Whole-edge hit areas; corners stay above them for diagonal resizing. */
+.handle-nw,.handle-ne,.handle-sw,.handle-se{z-index:3}
+.direct-resize-handle.handle-n,.direct-resize-handle.handle-s{left:0;width:100%;height:16px;padding:0;border-radius:0;cursor:ns-resize}
+.handle-n{top:-8px}.handle-s{bottom:-8px}
+.direct-resize-handle.handle-w,.direct-resize-handle.handle-e{top:0;width:16px;height:100%;padding:0;border-radius:0;cursor:ew-resize}
+.handle-w{left:-8px}.handle-e{right:-8px}
+.handle-n::after,.handle-s::after,.handle-w::after,.handle-e::after{display:none}
+.direct-resize-handle:is(.handle-n,.handle-s,.handle-w,.handle-e):is(:hover,:focus-visible){background:#a4537014;outline:none}

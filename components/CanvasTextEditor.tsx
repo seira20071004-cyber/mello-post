@@ -24,7 +24,7 @@ export default function CanvasTextEditor({plan,input,index,asset,report,onPlan,o
         onMove({...asset.textPlacements,[d.r.id]:{...d.offset,x:d.offset.x+(nx-d.r.x)/report.width,y:d.offset.y+(ny-d.r.y)/report.height}});
       }}
       onPointerUp={()=>{const d=drag.current;drag.current=undefined;if(d&&!d.moved&&!d.corner)startEdit(d.r);}} onPointerCancel={()=>{drag.current=undefined;}}>
-      <button type="button" className="direct-text-hit" aria-label={`文字を編集・移動: ${r.text.slice(0,24)}`} title="クリック・タップで編集、ドラッグで移動。四隅や辺のハンドルで大きさを変更。"
+      <button type="button" className="direct-text-hit" aria-label={`文字を編集・移動: ${r.text.slice(0,24)}`} title="クリック・タップで編集、ドラッグで移動。四隅を斜めに、辺はどこでもドラッグして大きさを変更。"
         onFocus={()=>setActive(r.id)}
         onPointerDown={e=>{if(e.button!==0)return;setActive(r.id);e.currentTarget.setPointerCapture(e.pointerId);drag.current={pointer:e.pointerId,x:e.clientX,y:e.clientY,r,offset:asset.textPlacements?.[r.id]||{x:0,y:0},moved:false};}}
         onClick={e=>{if(e.detail===0)startEdit(r);}}
@@ -34,6 +34,6 @@ export default function CanvasTextEditor({plan,input,index,asset,report,onPlan,o
         onFocus={()=>setActive(r.id)}
         onKeyDown={e=>{const delta={ArrowLeft:[-10,0],ArrowRight:[10,0],ArrowUp:[0,-10],ArrowDown:[0,10]}[e.key];if(delta){e.preventDefault();onMove({...asset.textPlacements,[r.id]:resizeTextRegion(r,report,asset.textPlacements?.[r.id]||{x:0,y:0},delta[0],delta[1],corner)});}}}/>) }
     </div>)}
-    {editing&&<div className="direct-text-popover" role="dialog" aria-label="画像上の文字を編集"><label>文字を編集<textarea autoFocus aria-label="画像上の文字" value={editing.text} maxLength={directTextLimit(editing.target,input)} rows={5} onChange={e=>{const text=e.target.value;setEditing({...editing,text});if(editing.target.kind==='year'){const n=Number(text);if(/^\d{4}$/.test(text)&&n>=(editing.target.key==='nowYear'?1900:1901)&&n<=(editing.target.key==='nowYear'?2200:2250))onYear(editing.target.key,n);}else onPlan(updateDirectText(plan,index,editing.target,text));}} onKeyDown={e=>{if(e.key==='Escape')setEditing(null);}}/></label><button type="button" className="button primary" onClick={()=>setEditing(null)}>完了</button><small>変更はそのまま保存されます。移動は文字をドラッグ、枠の大きさは四隅や辺のハンドルで変更できます。</small></div>}
+    {editing&&<div className="direct-text-popover" role="dialog" aria-label="画像上の文字を編集"><label>文字を編集<textarea autoFocus aria-label="画像上の文字" value={editing.text} maxLength={directTextLimit(editing.target,input)} rows={5} onChange={e=>{const text=e.target.value;setEditing({...editing,text});if(editing.target.kind==='year'){const n=Number(text);if(/^\d{4}$/.test(text)&&n>=(editing.target.key==='nowYear'?1900:1901)&&n<=(editing.target.key==='nowYear'?2200:2250))onYear(editing.target.key,n);}else onPlan(updateDirectText(plan,index,editing.target,text));}} onKeyDown={e=>{if(e.key==='Escape')setEditing(null);}}/></label><button type="button" className="button primary" onClick={()=>setEditing(null)}>完了</button><small>変更はそのまま保存されます。移動は文字をドラッグ、枠の大きさは四隅や辺のどこでもドラッグして変更できます。</small></div>}
   </div>;
 }
