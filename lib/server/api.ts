@@ -9,7 +9,7 @@ export const models = () => ({text:process.env.OPENAI_TEXT_MODEL || 'gpt-5-mini'
 const state=globalThis as typeof globalThis & {melloLimits?:Map<string,{start:number;calls:number}>,melloJobs?:Map<string,Promise<unknown>>,melloActive?:number};
 state.melloLimits ??= new Map();state.melloJobs ??=new Map();state.melloActive ??=0;
 
-export function authorize(request: Request) {
+export function authorize(request: Request,requireAI=true) {
   const origin=request.headers.get('origin');
   // Next may normalize request.url to localhost while the browser uses 127.0.0.1.
   // Match against the HTTP Host actually requested, never arbitrary forwarded headers.
@@ -26,7 +26,7 @@ export function authorize(request: Request) {
     const a=Buffer.from(password),b=Buffer.from(sent);
     if(a.length!==b.length || !timingSafeEqual(a,b))throw new AppError('利用パスワードを確認してください',401);
   }
-  if(!process.env.OPENAI_API_KEY?.trim())throw new AppError('OpenAI APIキーが未設定です。サーバーの.env.localに設定して再起動してください。操作サンプルはAPIなしで試せます。',503);
+  if(requireAI&&!process.env.OPENAI_API_KEY?.trim())throw new AppError('OpenAI APIキーが未設定です。サーバーの.env.localに設定して再起動してください。操作サンプルはAPIなしで試せます。',503);
 }
 export async function readBody(request:Request) {
   if(!request.headers.get('content-type')?.includes('application/json'))throw new AppError('JSON形式で送信してください',415);

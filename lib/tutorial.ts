@@ -1,9 +1,10 @@
 import type {Input} from './schema';
-export type TutorialStep='theme'|'mode'|'details'|'target'|'count'|'now-year'|'future-year'|'age'|'ratio'|'account'|'template'|'color'|'tone'|'reference'|'quality'|'generate'|'edit'|'images'|'caption'|'save'|'download'|'open-library'|'library';
+export type TutorialStep='theme'|'art-style'|'mode'|'details'|'target'|'count'|'now-year'|'future-year'|'age'|'ratio'|'account'|'template'|'color'|'tone'|'reference'|'quality'|'generate'|'edit'|'images'|'caption'|'save'|'download'|'open-library'|'library';
 export type TutorialHint={id:TutorialStep;title:string;body:string;action?:boolean;optional?:boolean};
 export function tutorialSteps(mode:Input['mode']):TutorialHint[]{return [
   {id:'theme',title:'まずは、テーマを入力しましょう',body:'どんな投稿にしたいですか？ 日常の出来事や伝えたいことを、あなたの言葉で２文字以上入力してください。例：寝かしつけのあとに気づいた、今日の小さな幸せ。'},
-  {id:'mode',title:'伝え方のモードを選びましょう',body:'物語１は水彩の物語、物語２はゆるい漫画。思いを綴る・情報を伝える・いまと未来・言い換えも選べます。気になる伝え方を選んでください。'},
+  {id:'art-style',title:'好きな絵柄を選べます',body:'水彩・ゆる漫画・色鉛筆・パステルから選べます。迷ったら「モードにおまかせ」のままで大丈夫です。'},
+  {id:'mode',title:'伝え方のモードを選びましょう',body:'物語１は短い文章、物語２は短い縦書きの物語。絵柄は選んだ設定で生成します。思いを綴る・情報を伝える・いまと未来・言い換えも選べます。気になる伝え方を選んでください。'},
   {id:'details',title:'もう少し詳しい内容も伝えられます',body:'入れたい出来事・会話・伝えたい気持ちがあれば書いてみましょう。実体験がある場合は、その内容を書くと文章に反映されます。まだ決まっていなければ空欄で進めます。',optional:true},
   {id:'target',title:'誰に届けたい投稿ですか？',body:'「２歳の子のイヤイヤ期に悩むママ」など、読んでほしい相手を具体的に書いてみましょう。相手に合わせた言葉になります。空欄でも進めます。',optional:true},
   {id:'count',title:'投稿の枚数を選びましょう',body:mode==='essay'?'このモードは７枚がおすすめです。表紙１枚・本文５枚・思いのまとめとフォロー案内１枚に分けます。枚数は変更できます。':'迷ったら６枚がおすすめです。枚数が多いほど内容を分けて伝えられます。モードによって生成する背景の数とAPI利用料も変わります。'},
@@ -11,8 +12,6 @@ export function tutorialSteps(mode:Input['mode']):TutorialHint[]{return [
   {id:'age',title:'登場する大人の見た目を選びます',body:'初期値は30代です。「届けたい相手」の年齢とは別で、イラストに登場する大人の見た目を決める設定です。'},
   {id:'ratio',title:'画像の形を選びましょう',body:'Instagramのフィード投稿なら4:5がおすすめです。正方形や9:16も選べます。'},
   {id:'account',title:'普段の発信内容も添えられます',body:'「子育ての声かけ」「親子の会話」など、今後も届けたい発信内容があれば入力します。フォロー案内に使います。空欄でも大丈夫です。',optional:true},
-  {id:'template',title:'投稿の雰囲気を選びましょう',body:'ペタル・リーフ・インクから、好みのデザインを選べます。あとから変更もできます。'},
-  {id:'color',title:'メインカラーを選べます',body:'投稿のアクセントになる色です。気に入った色に変えても、そのままでも大丈夫です。'},
   {id:'tone',title:'文章の雰囲気を選びましょう',body:'親しみやすく、落ち着いて、明るく、簡潔に。伝えたい相手や思いに合う雰囲気を選びます。'},
   {id:'reference',title:'参考画像があれば添えられます',body:'色使いや雰囲気の参考にしたい画像を設定できます。必須ではありません。画像は生成時にOpenAIへ送信されるので、使ってよいものを選んでください。',optional:true},
   {id:'quality',title:'生成する画像の品質を選びます',body:'最初は「お試し（低コスト）」がおすすめです。品質を上げるとAPI利用料も変わります。'},

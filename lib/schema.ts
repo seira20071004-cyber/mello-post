@@ -12,6 +12,7 @@ export const inputSchema = z.object({
   aspectRatio:z.enum(['4:5','1:1','9:16']).default('4:5'),
   accountTopic:z.string().trim().max(100).default(''),
   mode:z.enum(['story','essay','info','comic','comparison','quote']).default('info'),
+  artStyle:z.enum(['auto','watercolor','comic','pencil','pastel']).default('auto'),
   characterAge:z.enum(['30s','40s','50s','60s']).default('30s'),
   nowYear:z.number().int().min(1900).max(2200).default(2026),
   futureYear:z.number().int().min(1901).max(2250).default(2046),
@@ -54,7 +55,7 @@ export const emptyUsage = (): Usage => ({text: 0, image: 0, review: 0, failed: 0
 export const textBoxSchema=z.object({x:z.number().min(.04).max(.86),y:z.number().min(.04).max(.86),width:z.number().min(.25).max(.92),height:z.number().min(.18).max(.88)});
 export type TextBox=z.infer<typeof textBoxSchema>;
 export type SlideAsset = Appearance & {image?: string; error?: string; review?: VisualReview; fontScale: number; sample?: boolean; textBox?:TextBox; textAlign?:'left'|'center'; futureImage?:string;futureError?:string;futureReview?:VisualReview};
-export const initialInput: Input = {theme: '', details: '', target: '', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story',characterAge:'30s',nowYear:2026,futureYear:2046};
+export const initialInput: Input = {theme: '', details: '', target: '', count: 6, template: 'petal', color: '#ba7886', tone: '親しみやすく、わかりやすい', quality: 'low',aspectRatio:'4:5',accountTopic:'',mode:'story',artStyle:'auto',characterAge:'30s',nowYear:2026,futureYear:2046};
 
 export function requestedCount(theme: string): number | null {
   const normalized = theme.normalize('NFKC');

@@ -1,3 +1,4 @@
+import type {TextTarget} from './direct-text';
 import type { Input, Plan, SlideAsset } from './schema';
 import { tokens, readableInk } from './templates';
 import {canvasSize} from './formats';
@@ -6,7 +7,13 @@ import {drawVertical} from './vertical-text';
 import {textBoxFor} from './text-layout';
 import {fontFor,colorFor,surfaceOpacity,effectiveSurfaceOpacity} from './appearance';
 export const WIDTH = 1080, HEIGHT = 1920;
-export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number; fontOverride?:string; colorOverride?:string};
+export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number; fontOverride?:string; colorOverride?:string; textRegions?:TextRegion[]; textPlacements?:SlideAsset['textPlacements']};
+export type TextRegion={id:string;text:string;target?:TextTarget;x:number;y:number;width:number;height:number};
+function region(report:RenderReport,text:string,x:number,y:number,width:number,height:number,target?:TextTarget){
+  report.textRegions??=[];const id=`text-${report.textRegions.length}`,offset=report.textPlacements?.[id];
+  const dx=(offset?.x||0)*report.width,dy=(offset?.y||0)*report.height;
+  const r={id,text,target,x:x+dx,y:y+dy,width,height};report.textRegions.push(r);return r;
+}
 type Ctx = CanvasRenderingContext2D;
 const opening = /[（「『【〈《([]$/;
 const closing = /^[、。，．！？：；）』」】〉》\]ーぁぃぅぇぉっゃゅょァィゥェォッャュョ]/;
@@ -34,8 +41,8 @@ function paper(ctx:Ctx,x:number,y:number,w:number,h:number,r:number,fill:string,
   const opacity=surfaceOpacity(asset);if(!opacity)return;
   ctx.save();ctx.globalAlpha*=opacity;round(ctx,x,y,w,h,r,fill);ctx.restore();
 }
-function appearanceReport(input:Input,asset:SlideAsset):Pick<RenderReport,'fontOverride'|'colorOverride'>{return {fontOverride:asset.textFont&&asset.textFont!=='template'?fontFor(asset,'Noto Sans JP'):undefined,colorOverride:asset.textColor&&asset.textColor!=='dark'?colorFor(input,asset):undefined};}
-function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: number, size: number, font: string, color: string, report: RenderReport, weight=400) {
+function appearanceReport(input:Input,asset:SlideAsset):Pick<RenderReport,'fontOverride'|'colorOverride'|'textPlacements'>{return {textPlacements:asset.textPlacements,fontOverride:asset.textFont&&asset.textFont!=='template'?fontFor(asset,'Noto Sans JP'):undefined,colorOverride:asset.textColor&&asset.textColor!=='dark'?colorFor(input,asset):undefined};}
+function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: number, size: number, font: string, color: string, report: RenderReport, weight=400,target?:TextTarget) {
   font=report.fontOverride||font;color=report.colorOverride||color;
   let lines: string[]=[]; let actual = Math.round(size); const minimum=Math.min(actual,32);
   for (; actual >= minimum; actual--) {
@@ -45,6 +52,7 @@ function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: numbe
   }
   if (actual<minimum) { report.warnings.push('文章が表示領域を超えています。本文を短くしてください。'); actual=minimum; }
   report.minFontSize = Math.min(report.minFontSize, actual);
+  const r=region(report,text,x,y,w,Math.min(h,lines.length*actual*1.55),target);x=r.x;y=r.y;
   ctx.font=`${weight} ${actual}px "${font}"`; ctx.fillStyle=color; ctx.textBaseline='top';
   ctx.save(); ctx.beginPath(); ctx.rect(x,y,w+8,h); ctx.clip();
   lines.forEach((line,i)=>ctx.fillText(line,x,y+i*actual*1.55)); ctx.restore();
@@ -85,11 +93,11 @@ function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asse
   ctx.font='500 25px "Noto Sans JP"';ctx.fillStyle=t.muted;ctx.textBaseline='top';ctx.fillText('IDEAS FOR YOUR EVERYDAY',92,81);
   ctx.textAlign='right';ctx.fillText(`${String(index+1).padStart(2,'0')} / ${String(plan.slides.length).padStart(2,'0')}`,988,81);ctx.textAlign='left';
   if(cover) {
-    block(ctx,s.emphasis,94,198,880,100,32,'Noto Sans JP',t.muted,report,500);
-    block(ctx,s.title,88,340,900,430,88*scale,t.font,t.ink,report,600);
-    block(ctx,s.body,94,805,870,200,37*scale,'Noto Sans JP',t.ink,report);
+    block(ctx,s.emphasis,94,198,880,100,32,'Noto Sans JP',t.muted,report,500,{kind:'slide',key:'emphasis'});
+    block(ctx,s.title,88,340,900,430,88*scale,t.font,t.ink,report,600,{kind:'slide',key:'title'});
+    block(ctx,s.body,94,805,870,200,37*scale,'Noto Sans JP',t.ink,report,400,{kind:'slide',key:'body'});
   } else {
-    block(ctx,s.title,88,205,900,295,(summary?77:68)*scale,t.font,t.ink,report,600);
+    block(ctx,s.title,88,205,900,295,(summary?77:68)*scale,t.font,t.ink,report,600,{kind:'slide',key:'title'});
     const items=s.itemIds.map(id=>plan.items.find(item=>item.id===id)).filter(Boolean);
     if(items.length) {
       let y=535;
@@ -97,20 +105,20 @@ function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asse
         if(!item)return;
         paper(ctx,88,y,904,350,t.radius,t.paper,asset);
         round(ctx,118,y+28,64,64,32,t.accent);ctx.fillStyle=readableInk(t.accent);ctx.font='500 32px "Noto Sans JP"';ctx.textBaseline='top';ctx.fillText(String(item.id).padStart(2,'0'),129,y+42);
-        block(ctx,item.title,203,y+32,748,104,40*scale,t.font,t.ink,report,600);
-        block(ctx,item.body,120,y+136,830,205,(items.length===2?34:40)*scale,'Noto Sans JP',t.ink,report);
+        block(ctx,item.title,203,y+32,748,104,40*scale,t.font,t.ink,report,600,{kind:'item',id:item.id,key:'title'});
+        block(ctx,item.body,120,y+136,830,205,(items.length===2?34:40)*scale,'Noto Sans JP',t.ink,report,400,{kind:'item',id:item.id,key:'body'});
         y+=370;
       });
-      block(ctx,s.body,94,y+14,880,120,32*scale,'Noto Sans JP',t.muted,report);
-    } else block(ctx,s.body,96,565,880,plan.followCTA?300:430,46*scale,'Noto Sans JP',t.ink,report);
+      block(ctx,s.body,94,y+14,880,120,32*scale,'Noto Sans JP',t.muted,report,400,{kind:'slide',key:'body'});
+    } else block(ctx,s.body,96,565,880,plan.followCTA?300:430,46*scale,'Noto Sans JP',t.ink,report,400,{kind:'slide',key:'body'});
     if(summary) {
       const bandY=plan.followCTA?1220:1018;
-      if(plan.followCTA){paper(ctx,90,920,900,266,38,t.paper,asset);block(ctx,plan.followCTA,126,950,828,212,38*scale,'Noto Sans JP',t.ink,report);}
+      if(plan.followCTA){paper(ctx,90,920,900,266,38,t.paper,asset);block(ctx,plan.followCTA,126,950,828,212,38*scale,'Noto Sans JP',t.ink,report,400,{kind:'plan',key:'followCTA'});}
       round(ctx,90,bandY,900,98,49,t.accent);
-      block(ctx,s.emphasis,130,bandY+25,820,60,34*scale,'Noto Sans JP',readableInk(t.accent),report,500);
+      block(ctx,s.emphasis,130,bandY+25,820,60,34*scale,'Noto Sans JP',readableInk(t.accent),report,500,{kind:'slide',key:'emphasis'});
     } else {
       const y=imageY-32;paper(ctx,90,y,900,84,42,t.paper,asset);
-      block(ctx,s.emphasis,124,y+18,832,53,30*scale,'Noto Sans JP',t.ink,report,500);
+      block(ctx,s.emphasis,124,y+18,832,53,30*scale,'Noto Sans JP',t.ink,report,500,{kind:'slide',key:'emphasis'});
     }
   }
   paper(ctx,88,1760,904,112,30,t.paper,asset);
@@ -141,24 +149,24 @@ export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   ctx.font='500 23px "Noto Sans JP"';ctx.fillStyle=t.muted;ctx.textBaseline='top';ctx.fillText('IDEAS FOR YOUR EVERYDAY',margin,43);ctx.textAlign='right';ctx.fillText(`${String(index+1).padStart(2,'0')} / ${String(plan.slides.length).padStart(2,'0')}`,W-margin,43);ctx.textAlign='left';
   ctx.strokeStyle=t.line;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(margin,91);ctx.lineTo(W-margin,91);ctx.stroke();
   if(cover){
-    block(ctx,s.emphasis,margin,132,bodyWidth,66,31,'Noto Sans JP',t.muted,report,500);
+    block(ctx,s.emphasis,margin,132,bodyWidth,66,31,'Noto Sans JP',t.muted,report,500,{kind:'slide',key:'emphasis'});
     const titleY=226,titleH=square?292:330;
-    block(ctx,s.title,margin,titleY,bodyWidth,titleH,(square?80:88)*scale,t.font,t.ink,report,600);
+    block(ctx,s.title,margin,titleY,bodyWidth,titleH,(square?80:88)*scale,t.font,t.ink,report,600,{kind:'slide',key:'title'});
     const y=titleY+titleH+25,h=square?164:198;
     paper(ctx,margin-12,y-12,bodyWidth+24,h+24,24,t.paper,asset);
-    block(ctx,s.body,margin+8,y+4,bodyWidth-16,h-8,38*scale,'Noto Sans JP',t.ink,report);
+    block(ctx,s.body,margin+8,y+4,bodyWidth-16,h-8,38*scale,'Noto Sans JP',t.ink,report,400,{kind:'slide',key:'body'});
   }else if(summary){
     const titleH=square?188:232;
-    block(ctx,s.title,margin,142,bodyWidth,titleH,66*scale,t.font,t.ink,report,600);
+    block(ctx,s.title,margin,142,bodyWidth,titleH,66*scale,t.font,t.ink,report,600,{kind:'slide',key:'title'});
     const bodyY=142+titleH+28,bodyH=square?210:260;
-    block(ctx,s.body,margin,bodyY,bodyWidth,bodyH,38*scale,'Noto Sans JP',t.ink,report);
+    block(ctx,s.body,margin,bodyY,bodyWidth,bodyH,38*scale,'Noto Sans JP',t.ink,report,400,{kind:'slide',key:'body'});
     const ctaY=bodyY+bodyH+24,ctaH=Math.max(150,footerY-ctaY-25);
     paper(ctx,margin,ctaY,bodyWidth,ctaH,t.radius,t.paper,asset);
-    block(ctx,plan.followCTA||s.emphasis,margin+26,ctaY+22,bodyWidth-52,ctaH-42,35*scale,'Noto Sans JP',t.ink,report,500);
+    block(ctx,plan.followCTA||s.emphasis,margin+26,ctaY+22,bodyWidth-52,ctaH-42,35*scale,'Noto Sans JP',t.ink,report,500,plan.followCTA?{kind:'plan',key:'followCTA'}:{kind:'slide',key:'emphasis'});
   }else{
     const two=s.itemIds.length===2,titleTop=square&&two?115:137;
     const titleH=square?(two?104:144):180;
-    block(ctx,s.title,margin,titleTop,bodyWidth,titleH,60*scale,t.font,t.ink,report,600);
+    block(ctx,s.title,margin,titleTop,bodyWidth,titleH,60*scale,t.font,t.ink,report,600,{kind:'slide',key:'title'});
     const items=s.itemIds.map(id=>plan.items.find(item=>item.id===id)).filter(Boolean);
     const startY=titleTop+titleH+(square&&two?18:22),subtitleH=square?(two?70:160):112,gap=16;
     const available=footerY-startY-subtitleH-(square&&two?20:39);
@@ -166,12 +174,12 @@ export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     items.forEach((item,n)=>{if(!item)return;const y=startY+n*(cardH+gap);
       paper(ctx,margin,y,bodyWidth,cardH,t.radius,t.paper,asset);
       round(ctx,margin+22,y+23,56,56,28,t.accent);ctx.fillStyle=readableInk(t.accent);ctx.font='500 28px "Noto Sans JP"';ctx.textBaseline='top';ctx.fillText(String(item.id).padStart(2,'0'),margin+31,y+35);
-      block(ctx,item.title,margin+98,y+23,bodyWidth-124,100,(items.length===2?38:43)*scale,t.font,t.ink,report,600);
-      block(ctx,item.body,margin+26,y+124,bodyWidth-52,cardH-143,(items.length===2?34:40)*scale,'Noto Sans JP',t.ink,report);
+      block(ctx,item.title,margin+98,y+23,bodyWidth-124,100,(items.length===2?38:43)*scale,t.font,t.ink,report,600,{kind:'item',id:item.id,key:'title'});
+      block(ctx,item.body,margin+26,y+124,bodyWidth-52,cardH-143,(items.length===2?34:40)*scale,'Noto Sans JP',t.ink,report,400,{kind:'item',id:item.id,key:'body'});
     });
     if(items.length){const textY=startY+items.length*cardH+Math.max(0,items.length-1)*gap+19;
-      block(ctx,s.body,margin+5,textY,bodyWidth-10,subtitleH,32*scale,'Noto Sans JP',t.muted,report);
-    }else{const h=footerY-startY-40;paper(ctx,margin,startY,bodyWidth,h,t.radius,t.paper,asset);block(ctx,s.body,margin+32,startY+36,bodyWidth-64,h-72,44*scale,'Noto Sans JP',t.ink,report);}
+      block(ctx,s.body,margin+5,textY,bodyWidth-10,subtitleH,32*scale,'Noto Sans JP',t.muted,report,400,{kind:'slide',key:'body'});
+    }else{const h=footerY-startY-40;paper(ctx,margin,startY,bodyWidth,h,t.radius,t.paper,asset);block(ctx,s.body,margin+32,startY+36,bodyWidth-64,h-72,44*scale,'Noto Sans JP',t.ink,report,400,{kind:'slide',key:'body'});}
   }
   const footer=summary?'保存して実践。次のヒントもお楽しみに。':s.nextTeaser||'次のスライドで、続きを読んでみましょう →';
   paper(ctx,margin,footerY,bodyWidth,108,28,summary?t.accent:t.paper,asset);
@@ -212,23 +220,26 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   const bodyFit=body?fitReading(body,Math.max(1,h-titleHeight),(input.mode==='essay'?42:49)*scale):undefined;
   const paintedHeight=vertical?h:Math.min(h,titleHeight+(bodyFit?bodyFit.lines.length*bodyFit.actual*1.75:0));
   const opacity=effectiveSurfaceOpacity(input,asset);
-  if(opacity>0){
-    // Only wash behind actual lines, leaving the unused area of the artwork visible.
-    ctx.save();ctx.shadowColor=light?'#15131b':'#fffaf5';ctx.shadowBlur=36;
-    round(ctx,x-22,y-24,w+44,paintedHeight+48,24,light?`rgba(20,19,26,${opacity})`:`rgba(255,252,247,${opacity})`);ctx.restore();
+  const independentlyMoved=Object.values(asset.textPlacements||{}).some(p=>p.x!==0||p.y!==0);
+  function readingSurface(px:number,py:number,pw:number,ph:number){
+    if(opacity<=0)return;ctx.save();ctx.shadowColor=light?'#15131b':'#fffaf5';ctx.shadowBlur=36;
+    round(ctx,px-22,py-24,pw+44,ph+48,24,light?`rgba(20,19,26,${opacity})`:`rgba(255,252,247,${opacity})`);ctx.restore();
   }
-  function readingBlock(text:string,top:number,height:number,size:number,weight=400){
+  if(!independentlyMoved)readingSurface(x,y,w,paintedHeight);
+  function readingBlock(text:string,top:number,height:number,size:number,weight=400,key:'title'|'body'='body'){
     if(!text)return 0;
     const {actual,lines,overflow}=fitReading(text,height,size,weight);
     if(overflow)report.warnings.push('文章が表示領域を超えています。文章を短くするか、文字エリアを広げてください。');
     report.minFontSize=Math.min(report.minFontSize,actual);ctx.font=`${weight} ${actual}px "${font}"`;ctx.fillStyle=ink;ctx.textBaseline='top';
-    ctx.save();ctx.beginPath();ctx.rect(x,y,w+8,h);ctx.clip();ctx.textAlign=align;
+    const r=region(report,text,x,top,w,Math.min(height,lines.length*actual*1.75),{kind:'slide',key});const dx=r.x-x,dy=r.y-top;
+    if(independentlyMoved)readingSurface(r.x,r.y,w,r.height);
+    ctx.save();ctx.translate(dx,dy);ctx.beginPath();ctx.rect(x,top,w+8,height);ctx.clip();ctx.textAlign=align;
     lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+w/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
     return lines.length*actual*1.75;
   }
-  if(input.mode==='quote'&&!cover&&!quoteEnding)block(ctx,plan.title,W*.10,H*.055,W*.80,74,23,font,ink,report);
-  if(vertical){const layout=drawVertical(ctx,title||body,x,y,w,h,(cover?68:46)*scale,font,ink);report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
-  if(title)bodyY+=readingBlock(title,y,body?h*.56:h,(quoteFlow?112:76)*scale,600)+(body?28:0);
+  if(input.mode==='quote'&&!cover&&!quoteEnding)block(ctx,plan.title,W*.10,H*.055,W*.80,74,23,font,ink,report,400,{kind:'plan',key:'title'});
+  if(vertical){const r=region(report,title||body,x,y,w,h,{kind:'slide',key:title?'title':'body'});if(independentlyMoved)readingSurface(r.x,r.y,w,h);const layout=drawVertical(ctx,title||body,r.x,r.y,w,h,(cover?68:46)*scale,font,ink);report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
+  if(title)bodyY+=readingBlock(title,y,body?h*.56:h,(quoteFlow?112:76)*scale,600,'title')+(body?28:0);
   if(body)readingBlock(body,bodyY,Math.max(1,y+h-bodyY),(input.mode==='essay'?42:49)*scale);
   // No visible page furniture: the story itself provides the continuation.
   return report;
@@ -244,9 +255,9 @@ function drawComparisonSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Sl
     if(image){const im=image as HTMLImageElement,iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height,scale=Math.max(W/iw,half/ih),sw=W/scale,sh=half/scale;ctx.drawImage(image,(iw-sw)/2,(ih-sh)/2,sw,sh,0,y,W,half);}
     else{ctx.fillStyle=n?t.paper:t.line;ctx.fillRect(140,y+half*.32,800,half*.68);ctx.fillStyle=t.bg;ctx.fillRect(240,y+half*.43,190,half*.34);ctx.fillRect(650,y+half*.40,180,half*.37);ctx.fillStyle=t.accent;ctx.globalAlpha=.25;ctx.fillRect(n?530:460,y+half*.88,n?120:260,28);ctx.globalAlpha=1;for(let prop=0;prop<(n?2:index+3);prop++){ctx.fillStyle=prop%2?t.accent:t.muted;ctx.fillRect(460+prop*31,y+half*.75,20,half*.11);}}
     const opacity=surfaceOpacity(asset);ctx.save();ctx.globalAlpha=opacity;round(ctx,58,y+42,230,87,18,t.paper);ctx.restore();
-    block(ctx,String(n?input.futureYear:input.nowYear),78,y+53,190,68,44*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report,600);
+    block(ctx,String(n?input.futureYear:input.nowYear),78,y+53,190,68,44*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report,600,{kind:'year',key:n?'futureYear':'nowYear'});
     const caption=n?pair?.futureCaption:pair?.nowCaption;
-    if(caption){paper(ctx,58,y+half-123,W-116,100,18,t.paper,asset);block(ctx,caption,78,y+half-113,W-156,82,32*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report);}
+    if(caption){paper(ctx,58,y+half-123,W-116,100,18,t.paper,asset);block(ctx,caption,78,y+half-113,W-156,82,32*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report,400,{kind:'comparison',key:n?'futureCaption':'nowCaption'});}
   }
   ctx.fillStyle=t.paper;ctx.fillRect(0,half,W,8);return report;
 }
@@ -262,7 +273,7 @@ export async function renderCanvas(canvas: HTMLCanvasElement, plan: Plan, input:
   // Load all Japanese unicode subsets needed for this particular slide, not just the font family.
   const s=plan.slides[index];const content=[plan.title,plan.comparisons?.[index]?.nowCaption,plan.comparisons?.[index]?.futureCaption,`${input.nowYear} ${input.futureYear}`,s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
   await loadFonts();
-  await Promise.all(['400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
+  await Promise.all([`400 40px "${fontFor(asset,'Noto Sans JP')}"`,`600 70px "${fontFor(asset,'Noto Sans JP')}"`,'400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
   const image=asset.image?await loadImage(asset.image):undefined;
   const futureImage=input.mode==='comparison'&&asset.futureImage?await loadImage(asset.futureImage):undefined;
   return drawSlide(canvas.getContext('2d')!,plan,input,index,asset,image,futureImage);
