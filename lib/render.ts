@@ -1,3 +1,4 @@
+import {textFormatKey,rebaseMarks,richWrap,richWidth,drawRichLine,lineOffsets} from './rich-text';
 import type {TextTarget} from './direct-text';
 import type { Input, Plan, SlideAsset } from './schema';
 import { tokens, readableInk } from './templates';
@@ -7,9 +8,9 @@ import {drawVertical} from './vertical-text';
 import {textBoxFor} from './text-layout';
 import {fontFor,colorFor,surfaceOpacity,effectiveSurfaceOpacity} from './appearance';
 export const WIDTH = 1080, HEIGHT = 1920;
-export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number; fontOverride?:string; colorOverride?:string; textRegions?:TextRegion[]; textPlacements?:SlideAsset['textPlacements']};
-export type TextRegion={id:string;text:string;target?:TextTarget;x:number;y:number;width:number;height:number};
-function region(report:RenderReport,text:string,x:number,y:number,width:number,height:number,target?:TextTarget){
+export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number; fontOverride?:string; colorOverride?:string; textRegions?:TextRegion[]; textPlacements?:SlideAsset['textPlacements']; textFormats?:SlideAsset['textFormats']};
+export type TextRegion={fontSize?:number;fontFamily?:string;fontWeight?:number;lineHeight?:number;id:string;text:string;target?:TextTarget;x:number;y:number;width:number;height:number};
+function region(report:RenderReport,text:string,x:number,y:number,width:number,height:number,target?:TextTarget):TextRegion{
   report.textRegions??=[];const id=`text-${report.textRegions.length}`,offset=report.textPlacements?.[id];
   const dx=(offset?.x||0)*report.width,dy=(offset?.y||0)*report.height;
   const r={id,text,target,x:x+dx,y:y+dy,width,height};report.textRegions.push(r);return r;
@@ -45,22 +46,23 @@ function paper(ctx:Ctx,x:number,y:number,w:number,h:number,r:number,fill:string,
   const opacity=surfaceOpacity(asset);if(!opacity)return;
   ctx.save();ctx.globalAlpha*=opacity;round(ctx,x,y,w,h,r,fill);ctx.restore();
 }
-function appearanceReport(input:Input,asset:SlideAsset):Pick<RenderReport,'fontOverride'|'colorOverride'|'textPlacements'>{return {textPlacements:asset.textPlacements,fontOverride:asset.textFont&&asset.textFont!=='template'?fontFor(asset,'Noto Sans JP'):undefined,colorOverride:asset.textColor&&asset.textColor!=='dark'?colorFor(input,asset):undefined};}
+function appearanceReport(input:Input,asset:SlideAsset):Pick<RenderReport,'fontOverride'|'colorOverride'|'textPlacements'|'textFormats'>{return {textFormats:asset.textFormats,textPlacements:asset.textPlacements,fontOverride:asset.textFont&&asset.textFont!=='template'?fontFor(asset,'Noto Sans JP'):undefined,colorOverride:asset.textColor&&asset.textColor!=='dark'?colorFor(input,asset):undefined};}
 function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: number, size: number, font: string, color: string, report: RenderReport, weight=400,target?:TextTarget) {
   const dimensions=regionDimensions(report,w,h);w=dimensions.width;h=dimensions.height;
   font=report.fontOverride||font;color=report.colorOverride||color;
+  const marks=target?rebaseMarks(report.textFormats?.[textFormatKey(target)],text):[];
   let lines: string[]=[]; let actual = Math.round(size); const minimum=Math.min(actual,32);
   for (; actual >= minimum; actual--) {
     ctx.font=`${weight} ${actual}px "${font}"`;
-    lines=wrapText(ctx,text,w);
-    if (lines.length*actual*1.55<=h && lines.every(line=>ctx.measureText(line).width<=w+8)) break;
+    lines=marks.length?richWrap(ctx,text,w,marks,actual,font,weight):wrapText(ctx,text,w);
+    if (lines.length*actual*1.55<=h && lines.every((line,i)=>(marks.length?richWidth(ctx,line,lineOffsets(text,lines)[i],marks,actual,font,weight):ctx.measureText(line).width)<=w+8)) break;
   }
   if (actual<minimum) { report.warnings.push('文章が表示領域を超えています。本文を短くしてください。'); actual=minimum; }
   report.minFontSize = Math.min(report.minFontSize, actual);
-  const r=region(report,text,x,y,w,dimensions.customHeight?h:Math.min(h,lines.length*actual*1.55),target);x=r.x;y=r.y;
+  const r=region(report,text,x,y,w,dimensions.customHeight?h:Math.min(h,lines.length*actual*1.55),target);Object.assign(r,{fontSize:actual,fontFamily:font,fontWeight:weight,lineHeight:1.55});x=r.x;y=r.y;
   ctx.font=`${weight} ${actual}px "${font}"`; ctx.fillStyle=color; ctx.textBaseline='top';
   ctx.save(); ctx.beginPath(); ctx.rect(x,y,w+8,h); ctx.clip();
-  lines.forEach((line,i)=>ctx.fillText(line,x,y+i*actual*1.55)); ctx.restore();
+  const offsets=lineOffsets(text,lines);lines.forEach((line,i)=>{if(marks.length)drawRichLine(ctx,line,offsets[i],x,y+i*actual*1.55,marks,actual,font,weight);else ctx.fillText(line,x,y+i*actual*1.55);}); ctx.restore();
   return Math.min(lines.length*actual*1.55,h);
 }
 function botanical(ctx: Ctx, input: Input, index: number) {
@@ -213,11 +215,11 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   const scale=asset.fontScale||1,align=asset.textAlign||(quoteEnding?'center':'left'),vertical=(asset.writingMode||(!cover&&input.mode==='comic'?'vertical':'horizontal'))==='vertical';
   const title=cover?s.title:'',body=s.body;
   let bodyY=y;
-  function fitReading(text:string,height:number,size:number,weight=400,width=w){
+  function fitReading(text:string,height:number,size:number,weight=400,width=w,marks:import('./rich-text').TextMark[]=[]){
     let actual=Math.round(size),lines:string[]=[];
     const pairedLines=text.trim().split(/\r?\n/).map(line=>line.trim());
     const fixedPair=input.mode==='quote'&&!cover&&pairedLines.length===2&&((quoteFlow&&index>=plan.slides.length-2)||(pairedLines[0].endsWith('より、')&&pairedLines[1].endsWith('。')))&&pairedLines.every(line=>line.length<=24);
-    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=fixedPair?pairedLines:wrapText(ctx,text,width);if(lines.length*actual*1.75<=height&&lines.every(line=>ctx.measureText(line).width<=width+8))break;}
+    for(;actual>=32;actual--){ctx.font=`${weight} ${actual}px "${font}"`;lines=fixedPair?pairedLines:marks.length?richWrap(ctx,text,width,marks,actual,font,weight):wrapText(ctx,text,width);if(lines.length*actual*1.75<=height&&lines.every((line,i)=>(marks.length?richWidth(ctx,line,lineOffsets(text,lines)[i],marks,actual,font,weight):ctx.measureText(line).width)<=width+8))break;}
     return {actual:Math.max(32,actual),overflow:actual<32,lines};
   }
   const titleFit=title?fitReading(title,body?h*.56:h,(quoteFlow?112:76)*scale,600):undefined;
@@ -234,17 +236,18 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
   function readingBlock(text:string,top:number,height:number,size:number,weight=400,key:'title'|'body'='body'){
     if(!text)return 0;
     const dimensions=regionDimensions(report,w,height),width=dimensions.width;height=dimensions.height;
-    const {actual,lines,overflow}=fitReading(text,height,size,weight,width);
+    const marks=rebaseMarks(report.textFormats?.[textFormatKey({kind:'slide',key})],text);
+    const {actual,lines,overflow}=fitReading(text,height,size,weight,width,marks);
     if(overflow)report.warnings.push('文章が表示領域を超えています。文章を短くするか、文字エリアを広げてください。');
     report.minFontSize=Math.min(report.minFontSize,actual);ctx.font=`${weight} ${actual}px "${font}"`;ctx.fillStyle=ink;ctx.textBaseline='top';
-    const r=region(report,text,x,top,width,dimensions.customHeight?height:Math.min(height,lines.length*actual*1.75),{kind:'slide',key});const dx=r.x-x,dy=r.y-top;
+    const r=region(report,text,x,top,width,dimensions.customHeight?height:Math.min(height,lines.length*actual*1.75),{kind:'slide',key});Object.assign(r,{fontSize:actual,fontFamily:font,fontWeight:weight,lineHeight:1.75});const dx=r.x-x,dy=r.y-top;
     if(independentlyMoved)readingSurface(r.x,r.y,width,Math.min(height,lines.length*actual*1.75));
     ctx.save();ctx.translate(dx,dy);ctx.beginPath();ctx.rect(x,top,width+8,height);ctx.clip();ctx.textAlign=align;
-    lines.forEach((line,n)=>ctx.fillText(line,align==='center'?x+width/2:x,top+n*actual*1.75));ctx.restore();ctx.textAlign='left';
+    const offsets=lineOffsets(text,lines);lines.forEach((line,n)=>{if(marks.length){ctx.textAlign='left';const measured=richWidth(ctx,line,offsets[n],marks,actual,font,weight);drawRichLine(ctx,line,offsets[n],align==='center'?x+(width-measured)/2:x,top+n*actual*1.75,marks,actual,font,weight);}else ctx.fillText(line,align==='center'?x+width/2:x,top+n*actual*1.75);});ctx.restore();ctx.textAlign='left';
     return lines.length*actual*1.75;
   }
   if(input.mode==='quote'&&!cover&&!quoteEnding)block(ctx,plan.title,W*.10,H*.055,W*.80,74,23,font,ink,report,400,{kind:'plan',key:'title'});
-  if(vertical){const dimensions=regionDimensions(report,w,h),width=dimensions.width,height=dimensions.height;const r=region(report,title||body,x,y,width,height,{kind:'slide',key:title?'title':'body'});if(independentlyMoved)readingSurface(r.x,r.y,width,height);const layout=drawVertical(ctx,title||body,r.x,r.y,width,height,(cover?68:46)*scale,font,ink);report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
+  if(vertical){const dimensions=regionDimensions(report,w,h),width=dimensions.width,height=dimensions.height;const r=region(report,title||body,x,y,width,height,{kind:'slide',key:title?'title':'body'});if(independentlyMoved)readingSurface(r.x,r.y,width,height);const layout=drawVertical(ctx,title||body,r.x,r.y,width,height,(cover?68:46)*scale,font,ink,rebaseMarks(report.textFormats?.[textFormatKey({kind:'slide',key:title?'title':'body'})],title||body));Object.assign(r,{fontSize:layout.size,fontFamily:font,fontWeight:400,lineHeight:1.7});report.minFontSize=Math.min(report.minFontSize,layout.size);if(layout.overflow)report.warnings.push('縦書きの文章が収まりません。文字エリアを広げるか本文を短くしてください。');return report;}
   if(title)bodyY+=readingBlock(title,y,body?h*.56:h,(quoteFlow?112:76)*scale,600,'title')+(body?28:0);
   if(body)readingBlock(body,bodyY,Math.max(1,y+h-bodyY),(input.mode==='essay'?42:49)*scale);
   // No visible page furniture: the story itself provides the continuation.
@@ -279,7 +282,7 @@ export async function renderCanvas(canvas: HTMLCanvasElement, plan: Plan, input:
   // Load all Japanese unicode subsets needed for this particular slide, not just the font family.
   const s=plan.slides[index];const content=[plan.title,plan.comparisons?.[index]?.nowCaption,plan.comparisons?.[index]?.futureCaption,`${input.nowYear} ${input.futureYear}`,s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
   await loadFonts();
-  await Promise.all([`400 40px "${fontFor(asset,'Noto Sans JP')}"`,`600 70px "${fontFor(asset,'Noto Sans JP')}"`,'400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
+  await Promise.all([`700 40px "${fontFor(asset,tokens(input).font)}"`,'700 40px "Noto Sans JP"','700 40px "Noto Serif JP"',`400 40px "${fontFor(asset,'Noto Sans JP')}"`,`600 70px "${fontFor(asset,'Noto Sans JP')}"`,'400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
   const image=asset.image?await loadImage(asset.image):undefined;
   const futureImage=input.mode==='comparison'&&asset.futureImage?await loadImage(asset.futureImage):undefined;
   return drawSlide(canvas.getContext('2d')!,plan,input,index,asset,image,futureImage);

@@ -2,6 +2,7 @@ import {z} from 'zod';
 import type {Input,SlideAsset} from './schema';
 import {templates} from './templates';
 export const appearanceSchema=z.object({
+  textFormats:z.record(z.string(),z.object({text:z.string().max(2100),marks:z.array(z.object({start:z.number().int().min(0).max(2100),end:z.number().int().min(1).max(2100),bold:z.boolean().optional(),underline:z.boolean().optional()})).max(2100)})).optional(),
   writingMode:z.enum(['horizontal','vertical']).optional(),
   textFont:z.enum(['template','serif','sans','rounded','handwritten','literary']).optional(),
   textColor:z.union([z.enum(['dark','light']),z.string().regex(/^#[0-9a-fA-F]{6}$/)]).optional(),
