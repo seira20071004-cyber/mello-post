@@ -11,12 +11,12 @@ export const WIDTH = 1080, HEIGHT = 1920;
 export type RenderReport = {warnings: string[]; width: number; height: number; minFontSize: number; fontOverride?:string; colorOverride?:string; textRegions?:TextRegion[]; textPlacements?:SlideAsset['textPlacements']; textFormats?:SlideAsset['textFormats']};
 export type TextRegion={fontSize?:number;fontFamily?:string;fontWeight?:number;lineHeight?:number;id:string;text:string;target?:TextTarget;x:number;y:number;width:number;height:number};
 function region(report:RenderReport,text:string,x:number,y:number,width:number,height:number,target?:TextTarget):TextRegion{
-  report.textRegions??=[];const id=`text-${report.textRegions.length}`,offset=report.textPlacements?.[id];
+  report.textRegions??=[];const id=target?.kind==='box'?`box-${target.id}`:`text-${report.textRegions.length}`,offset=report.textPlacements?.[id];
   const dx=(offset?.x||0)*report.width,dy=(offset?.y||0)*report.height;
   const r={id,text,target,x:x+dx,y:y+dy,width,height};report.textRegions.push(r);return r;
 }
-function regionDimensions(report:RenderReport,width:number,height:number){
-  const saved=report.textPlacements?.[`text-${report.textRegions?.length||0}`];
+function regionDimensions(report:RenderReport,width:number,height:number,target?:TextTarget){
+  const saved=report.textPlacements?.[target?.kind==='box'?`box-${target.id}`:`text-${report.textRegions?.length||0}`];
   return {width:saved?.width===undefined?width:saved.width*report.width,height:saved?.height===undefined?height:saved.height*report.height,customHeight:saved?.height!==undefined};
 }
 type Ctx = CanvasRenderingContext2D;
@@ -48,7 +48,7 @@ function paper(ctx:Ctx,x:number,y:number,w:number,h:number,r:number,fill:string,
 }
 function appearanceReport(input:Input,asset:SlideAsset):Pick<RenderReport,'fontOverride'|'colorOverride'|'textPlacements'|'textFormats'>{return {textFormats:asset.textFormats,textPlacements:asset.textPlacements,fontOverride:asset.textFont&&asset.textFont!=='template'?fontFor(asset,'Noto Sans JP'):undefined,colorOverride:asset.textColor&&asset.textColor!=='dark'?colorFor(input,asset):undefined};}
 function block(ctx: Ctx, text: string, x: number, y: number, w: number, h: number, size: number, font: string, color: string, report: RenderReport, weight=400,target?:TextTarget) {
-  const dimensions=regionDimensions(report,w,h);w=dimensions.width;h=dimensions.height;
+  const dimensions=regionDimensions(report,w,h,target);w=dimensions.width;h=dimensions.height;
   font=report.fontOverride||font;color=report.colorOverride||color;
   const marks=target?rebaseMarks(report.textFormats?.[textFormatKey(target)],text):[];
   let lines: string[]=[]; let actual = Math.round(size); const minimum=Math.min(actual,32);
@@ -132,7 +132,7 @@ function drawLegacySlide(ctx: Ctx, plan: Plan, input: Input, index: number, asse
   block(ctx,summary?'保存して、いつでも見返せるように':s.nextTeaser||'次のスライドへ →',116,1774,850,84,27,'Noto Sans JP',t.ink,report);
   return report;
 }
-export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource,futureImage?:CanvasImageSource):RenderReport{
+function drawBaseSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource,futureImage?:CanvasImageSource):RenderReport{
   const size=canvasSize(input);
   if(input.mode==='comparison')return drawComparisonSlide(ctx,plan,input,index,asset,image,futureImage);
   if(isNarrative(input))return drawReadingSlide(ctx,plan,input,index,asset,image);
@@ -270,6 +270,10 @@ function drawComparisonSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Sl
   }
   ctx.fillStyle=t.paper;ctx.fillRect(0,half,W,8);return report;
 }
+export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource,futureImage?:CanvasImageSource):RenderReport{
+ const report=drawBaseSlide(ctx,plan,input,index,asset,image,futureImage),t=tokens(input);
+ for(const box of asset.extraTextBoxes||[]){const start=report.textRegions?.length||0;ctx.save();ctx.textAlign='left';block(ctx,box.text,box.x*report.width,box.y*report.height,box.width*report.width,box.height*report.height,box.fontSize*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report,400,{kind:'box',id:box.id});const r=report.textRegions?.[start];if(r&&asset.textPlacements?.[r.id]?.height===undefined)r.height=box.height*report.height;ctx.restore();}return report;
+}
 let fontsReady: Promise<void> | undefined;
 export function loadFonts() {
   fontsReady ??= Promise.all(['400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"'].map(font=>document.fonts.load(font,'美容習慣わたしをいたわる'))).then(()=>document.fonts.ready).then(()=>undefined);
@@ -280,7 +284,7 @@ export async function loadImage(src: string): Promise<HTMLImageElement> {
 }
 export async function renderCanvas(canvas: HTMLCanvasElement, plan: Plan, input: Input, index: number, asset: SlideAsset) {
   // Load all Japanese unicode subsets needed for this particular slide, not just the font family.
-  const s=plan.slides[index];const content=[plan.title,plan.comparisons?.[index]?.nowCaption,plan.comparisons?.[index]?.futureCaption,`${input.nowYear} ${input.futureYear}`,s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
+  const s=plan.slides[index];const content=[...(asset.extraTextBoxes||[]).map(b=>b.text),plan.title,plan.comparisons?.[index]?.nowCaption,plan.comparisons?.[index]?.futureCaption,`${input.nowYear} ${input.futureYear}`,s.title,s.body,s.emphasis,s.nextTeaser,plan.followCTA,'保存して、いつでも見返せるように自分のペースで心地よい毎日へ保存して実践。次のヒントもお楽しみに。次のスライドで、続きを読んでみましょう →',...plan.items.filter(i=>s.itemIds.includes(i.id)).flatMap(i=>[i.title,i.body])].join('');
   await loadFonts();
   await Promise.all([`700 40px "${fontFor(asset,tokens(input).font)}"`,'700 40px "Noto Sans JP"','700 40px "Noto Serif JP"',`400 40px "${fontFor(asset,'Noto Sans JP')}"`,`600 70px "${fontFor(asset,'Noto Sans JP')}"`,'400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
   const image=asset.image?await loadImage(asset.image):undefined;

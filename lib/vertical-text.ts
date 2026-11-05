@@ -24,13 +24,13 @@ export function drawVertical(ctx:CanvasRenderingContext2D,text:string,x:number,y
   const right=x+w/2+(layout.columns.length-1)*columnPitch/2;
   ctx.save();ctx.font=`400 ${s}px "${font}"`;ctx.fillStyle=color;ctx.textBaseline='middle';ctx.textAlign='center';ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
   const offsets=lineOffsets(text,layout.columns);layout.columns.forEach((column,c)=>{let offset=offsets[c];Array.from(column).forEach((char,r)=>{
-    const mark=markAt(marks,offset);offset+=char.length;ctx.font=`${mark.bold?700:400} ${s}px "${font}"`;
+    const mark=markAt(marks,offset);offset+=char.length;ctx.font=`${mark.bold?700:400} ${s}px "${font}"`;ctx.fillStyle=mark.color||color;
     const cx=right-c*columnPitch,cy=y+s*.55+r*pitch;
     ctx.save();ctx.translate(cx,cy);
     if(/[ー―〜～…（）「」『』【】〈〉《》〔〕［］｛｝A-Za-z0-9]/.test(char)){ctx.rotate(Math.PI/2);ctx.fillText(char,0,0);}
     else if(/[、。，．]/.test(char))ctx.fillText(char,s*.40,-s*.34);
     else ctx.fillText(char,0,0);
     ctx.restore();
-    if(mark.underline){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=Math.max(1.5,s*.045);ctx.beginPath();ctx.moveTo(cx+s*.58,cy-s*.55);ctx.lineTo(cx+s*.58,cy+s*.77);ctx.stroke();ctx.restore();}
+    if(mark.underline){ctx.save();ctx.strokeStyle=mark.color||color;ctx.lineWidth=Math.max(1.5,s*.045);ctx.beginPath();ctx.moveTo(cx+s*.58,cy-s*.55);ctx.lineTo(cx+s*.58,cy+s*.77);ctx.stroke();ctx.restore();}
   });});ctx.restore();return layout;
 }
