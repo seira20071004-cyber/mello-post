@@ -25,6 +25,7 @@ import {characterAges} from '@/lib/characters';
 import {modes,creationModes,themeExamples,recommendedSlideCount,inputForMode,isNarrative,pendingImageCalls,usesSharedBackground,isAssetComplete,backgroundGroups,hasQuoteFlow} from '@/lib/modes';
 import {textBoxFor,newSlideAsset} from '@/lib/text-layout';
 import ProjectLibrary from './ProjectLibrary';
+import PersonCollection from './PersonCollection';
 import GettingStarted from './GettingStarted';
 import StudioTutorial from './StudioTutorial';
 import {canAdvanceTutorial,nextTutorialStep,tutorialForScreen,type TutorialStep} from '@/lib/tutorial';
@@ -45,7 +46,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
   const [reference,setReference]=useState<string>(),[usage,setUsage]=useState<Usage>(emptyUsage),[config,setConfig]=useState<Config|null>(null);
   const [busy,setBusy]=useState(''),[progress,setProgress]=useState({done:0,total:0}),[error,setError]=useState(''),[toast,setToast]=useState('');
   const [isSample,setIsSample]=useState(false),[password,setPassword]=useState(accessPassword);
-  const [view,setView]=useState<'home'|'editor'|'library'>('home'),[switching,setSwitching]=useState(false);
+  const [view,setView]=useState<'home'|'editor'|'library'|'collection'>('home'),[switching,setSwitching]=useState(false);
   const projectContent=useMemo<ProjectContent>(()=>({input,plan,assets,usage,reference,isSample,phase,selected,tab}),[input,plan,assets,usage,reference,isSample,phase,selected,tab]);
   const library=useProjects(projectContent,view==='editor');
   const previous=library.projects.find(p=>!p.archived);
@@ -72,7 +73,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
   const editable=!!plan&&!busy&&!exporting&&!switching;
   const editSnapshot=useMemo(()=>({plan,input,assets}),[plan,input,assets]);
   const history=useEditorHistory(editSnapshot,`${library.activeId||'new'}:${view}:${phase}`,editable&&view==='editor'&&phase===1,value=>{setPlan(value.plan);setInput(value.input);setAssets(value.assets);});
-  useEffect(()=>{if(tutorialStep&&view!=='home')setTutorialStep((tutorialStep==='now-year'||tutorialStep==='future-year')&&!comparison?'age':tutorialForScreen(tutorialStep,phase,view,assets.length>0&&done===assets.length));},[tutorialStep,phase,view,done,assets.length,comparison]);
+  useEffect(()=>{if(tutorialStep&&(view==='editor'||view==='library'))setTutorialStep((tutorialStep==='now-year'||tutorialStep==='future-year')&&!comparison?'age':tutorialForScreen(tutorialStep,phase,view,assets.length>0&&done===assets.length));},[tutorialStep,phase,view,done,assets.length,comparison]);
   useEffect(()=>{if(tutorialStep==='edit')setTab('text');},[tutorialStep]);
   function openGuide(){dialog.current?.close();setHelp(false);setGuideLaunch(n=>n+1);}
   function patchInput<K extends keyof Input>(key:K,value:Input[K]){setInput(p=>({...p,[key]:value}));}
@@ -91,6 +92,10 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
   async function showLibrary(){
     if(busy||exporting||switching)return;setSwitching(true);
     try{if(view==='editor'&&!await library.flush())return;await library.refresh();setView('library');setError('');top.current?.scrollIntoView({behavior:'smooth'});}catch(e){setError((e as Error).message);}finally{setSwitching(false);}
+  }
+  async function showCollection(){
+    if(busy||exporting||switching)return;setSwitching(true);
+    try{if(view==='editor'&&!await library.flush())return;setView('collection');setError('');top.current?.scrollIntoView({behavior:'smooth'});}finally{setSwitching(false);}
   }
   async function startNew(){
     if(busy||exporting||switching)return false;setSwitching(true);
@@ -158,13 +163,14 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
       <div className="nav-label">WORKSPACE</div>
       <button className={`nav-item ${view==='editor'?'active':''}`} disabled={!!busy||exporting||switching||!library.ready} onClick={()=>{setMenuOpen(false);void startNew();}}><Sparkles size={19}/>投稿をつくる<Plus size={16}/></button>
       <button className={`nav-item ${view==='library'?'active':''}`} disabled={!!busy||exporting||switching||!library.ready} onClick={()=>{setMenuOpen(false);void showLibrary();}}><Layers size={19}/>マイスタジオ{library.projects.filter(p=>!p.archived).length>0&&<span className="nav-count">{library.projects.filter(p=>!p.archived).length}</span>}</button>
+      <button className={`nav-item ${view==='collection'?'active':''}`} disabled={!!busy||exporting||switching||!library.ready} onClick={()=>{setMenuOpen(false);void showCollection();}}><Bookmark size={19}/>コレクション</button>
       <div className="sidebar-bottom"><div className="sidebar-note"><Leaf size={21}/><strong>ひとつの想いから、<br/>広がるあなたの世界。</strong><p>言葉も、デザインも。<br/>mellōがそっとお手伝い。</p></div>
         <button className="nav-item" onClick={()=>{setMenuOpen(false);setHelp(true);}}><HelpCircle size={19}/>使い方ガイド<ArrowUpRight size={15}/></button>
         <div className="profile"><div className="avatar">M</div><div>マイワークスペース<small>プライベートスタジオ</small></div><Settings2 size={16}/></div>
       </div>
     </aside>
     <main inert={menuOpen} className="main" ref={top}>
-      <header className="topbar"><button ref={menuTrigger} className="icon-button menu-toggle" aria-label="メニューを開く" aria-expanded={menuOpen} aria-controls="workspace-menu" onClick={()=>setMenuOpen(v=>!v)}><Menu size={22}/></button><span className="compact-brand">mellō.</span><span className="breadcrumb">ワークスペース <ChevronRight size={14}/><strong>{view==='home'?'ホーム':view==='library'?'マイスタジオ':'投稿をつくる'}</strong></span><span className="top-status"><span className="status-dot"/>{view==='home'?'あなたの想いを、かたちに':view==='library'?'このブラウザに保存':library.status||'テーマを入力すると自動保存'}</span><button className="mobile-studio button" disabled={!!busy||exporting||switching||!library.ready} onClick={()=>{setMenuOpen(false);void showLibrary();}}><Layers size={16}/>マイスタジオ</button><button className="mobile-help icon-button" aria-label="使い方" onClick={()=>setHelp(true)}><HelpCircle size={21}/></button></header>
+      <header className="topbar"><button ref={menuTrigger} className="icon-button menu-toggle" aria-label="メニューを開く" aria-expanded={menuOpen} aria-controls="workspace-menu" onClick={()=>setMenuOpen(v=>!v)}><Menu size={22}/></button><span className="compact-brand">mellō.</span><span className="breadcrumb">ワークスペース <ChevronRight size={14}/><strong>{view==='home'?'ホーム':view==='library'?'マイスタジオ':view==='collection'?'コレクション':'投稿をつくる'}</strong></span><span className="top-status"><span className="status-dot"/>{view==='home'?'あなたの想いを、かたちに':(view==='library'||view==='collection')?'このブラウザに保存':library.status||'テーマを入力すると自動保存'}</span><button className="mobile-studio button" disabled={!!busy||exporting||switching||!library.ready} onClick={()=>{setMenuOpen(false);void showLibrary();}}><Layers size={16}/>マイスタジオ</button><button className="mobile-help icon-button" aria-label="使い方" onClick={()=>setHelp(true)}><HelpCircle size={21}/></button></header>
       <div className="content">
         {(view==='home'||(view==='editor'&&phase>0))&&<section className={`intro ${phase?'intro-compact':''}`}><div><div className="eyebrow"><span/> YOUR IDEAS, BEAUTIFULLY TOLD</div><h1>{phase===0?<>伝えたい想いを、<br/><em>美しい投稿に。</em></>:phase===1?<>あなたらしく、<em>仕上げましょう。</em></>:<>できあがった想いを、<em>届けましょう。</em></>}</h1><p>{phase===0?'テーマや想いから、Instagramの投稿画像とキャプションをつくれます。':'文章の修正は何度でも。あなたの言葉を大切に。'}<br/>{phase===0?'あなたの「伝えたい」に、AIがそっと寄り添います。':'日本語の文字とイラストを、美しくひとつに。'}</p>{phase===0&&<button className="button" style={{marginTop:18}} onClick={openGuide}><HelpCircle size={17}/>はじめての使い方</button>}{phase===0&&<div className="intro-meta"><span><Check size={14}/>日本語をきれいに</span><span><Check size={14}/>統一感のあるデザイン</span><span><Check size={14}/>PNGでそのまま保存</span></div>}</div>
         {phase===0&&<div className="hero-art" aria-label="テンプレートの作例"><span className="floating-sparkle">✧</span><div className="hero-card card-left"><SlidePreview plan={demoPlan} input={{...demoInput,template:'leaf',color:templates.leaf.accent}} index={2} asset={previewAsset}/></div><div className="hero-card card-right"><SlidePreview plan={demoPlan} input={{...demoInput,template:'ink',color:templates.ink.accent}} index={5} asset={previewAsset}/></div><div className="hero-card card-center"><SlidePreview plan={demoPlan} input={demoInput} index={0} asset={previewAsset}/></div><span className="art-label"><Flower2 size={15}/>小さな想いが、素敵な一枚に。</span></div>}</section>}
@@ -178,6 +184,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
         {error&&<div className="error-banner" role="alert"><AlertCircle size={20}/><span>{error}</span><button className="icon-button" aria-label="エラーを閉じる" onClick={()=>setError('')}><X size={17}/></button></div>}
         {busy&&<div className="progress-panel" role="status" aria-live="polite"><LoaderCircle className="spin" size={24}/><div><strong>{busy}</strong><p>{progress.total?`${progress.done} / ${progress.total}画像 完了 · 1枚ずつ大切に作っています。`:'文章の構成と表現を確認しています。しばらくお待ちください。'}</p>{progress.total>0&&<progress value={progress.done} max={progress.total}/>}</div>{progress.total>0&&<Button onClick={()=>{stop.current=true;setToast('処理中の1枚が終わったら停止します');}}>この1枚で停止</Button>}</div>}
 
+        {view==='collection'&&<><button className="button" onClick={()=>move(phase)}><ArrowLeft size={16}/>投稿づくりに戻る</button><PersonCollection/></>}
         {view==='library'&&<><div data-guide-slot="library"/><ProjectLibrary projects={library.projects} ready={library.ready} disabled={switching||!!busy||exporting} onOpen={id=>void openProject(id)} onNew={()=>void startNew()} onArchive={(id,archived)=>void archiveProject(id,archived)}/></>}
         {view==='editor'&&phase===0&&<div className="create-grid"><section className="panel input-panel"><div className="panel-heading"><span className="section-number">01</span><div><h2>どんな投稿をつくりますか？</h2><p>思いついたことを、あなたの言葉で。</p></div><Sparkles className="soft-icon" size={23}/></div>
           <form onSubmit={e=>{e.preventDefault();void generatePlan();}}><fieldset disabled={!!busy||switching}>

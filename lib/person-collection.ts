@@ -1,0 +1,15 @@
+import {z} from 'zod';
+
+export const personSchema=z.object({id:z.string().min(1),name:z.string().trim().min(1).max(60),source:z.string().max(8_000_000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/),width:z.number().int().min(1).max(4096),height:z.number().int().min(1).max(4096),createdAt:z.number(),updatedAt:z.number(),archived:z.boolean()});
+export type CollectedPerson=z.infer<typeof personSchema>;
+export type PersonImage=Pick<CollectedPerson,'source'|'width'|'height'>;
+export const COLLECTION_DB='mello-person-collection';
+const EVENT='mello-person-collection-changed';
+function open():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const request=indexedDB.open(COLLECTION_DB,1);request.onupgradeneeded=()=>request.result.createObjectStore('people',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+async function transaction<T>(mode:IDBTransactionMode,work:(store:IDBObjectStore)=>IDBRequest<T>):Promise<T>{const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction('people',mode),request=work(tx.objectStore('people'));let result:T;request.onsuccess=()=>{result=request.result;};tx.oncomplete=()=>{db.close();resolve(result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error||new Error('コレクションを保存できませんでした。端末の空き容量を確認してください。'));};});}
+function notify(){if(typeof window!=='undefined')window.dispatchEvent(new Event(EVENT));}
+export function subscribePeople(refresh:()=>void){window.addEventListener(EVENT,refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener(EVENT,refresh);window.removeEventListener('focus',refresh);};}
+export async function listPeople(){const records=await transaction<unknown[]>('readonly',store=>store.getAll());return records.map(item=>personSchema.parse(item)).sort((a,b)=>b.updatedAt-a.updatedAt);}
+export async function savePerson(image:PersonImage,name:string){const now=Date.now(),person=personSchema.parse({...image,name,id:crypto.randomUUID(),createdAt:now,updatedAt:now,archived:false});await transaction('readwrite',store=>store.put(person));notify();return person;}
+// Read and update in one transaction so renaming never overwrites a concurrent archive.
+export async function updatePerson(id:string,patch:{name?:string;archived?:boolean}){const db=await open();await new Promise<void>((resolve,reject)=>{const tx=db.transaction('people','readwrite'),store=tx.objectStore('people'),request=store.get(id);let failure:unknown;request.onsuccess=()=>{try{if(!request.result)throw new Error('人物が見つかりませんでした。');store.put(personSchema.parse({...request.result,...patch,updatedAt:Date.now()}));}catch(e){failure=e;tx.abort();}};tx.oncomplete=()=>{db.close();resolve();};tx.onabort=tx.onerror=()=>{db.close();reject(failure||tx.error);};});notify();}
