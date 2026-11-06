@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {ArrowRight,Flower2,LoaderCircle,LockKeyhole} from 'lucide-react';
 import Studio from './Studio';
 
-type Account={email:string;admin:boolean;access:'invite'|'active'|'revoked'};
+type Account={email:string;picture?:string;admin:boolean;access:'invite'|'active'|'revoked'};
 
 export default function PasswordGate(){
   const [loading,setLoading]=useState(true),[required,setRequired]=useState(true),[password,setPassword]=useState(''),[accepted,setAccepted]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');

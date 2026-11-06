@@ -16,7 +16,7 @@ export async function GET(request:Request) {
       configured:!!process.env.OPENAI_API_KEY?.trim(),
       passwordRequired:!googleLogin&&(!!process.env.APP_PASSWORD||process.env.NODE_ENV==='production'),
       googleLogin,googleReady:!!settings,
-      account:session?{email:session.email,admin,access}:null,
+      account:session?{email:session.email,picture:session.picture,admin,access}:null,
       ...models(),imageEstimateUSD:Number.isFinite(estimate)&&estimate>0?estimate:null,
     },{headers});
   } catch {

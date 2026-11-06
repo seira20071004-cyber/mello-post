@@ -41,7 +41,7 @@ const examples=[{mode:'comic',label:'雨の日の小さなやさしさ'},{mode:'
 function Button({children,className='',...props}:React.ButtonHTMLAttributes<HTMLButtonElement>){return <button className={`button ${className}`} {...props}>{children}</button>;}
 function Field({label,hint,children,required=false,guide}:{label:string;hint?:string;children:React.ReactNode;required?:boolean;guide?:string}){return <>{guide&&<div data-guide-slot={guide}/>}<div className="field" data-guide-target={guide}><div className="field-title">{label}{required&&<span className="required">必須</span>}{hint&&<span className="field-hint">{hint}</span>}</div>{children}</div></>;}
 
-export default function Studio({accessPassword='',account:googleAccount}:{accessPassword?:string;account?:{email:string;admin:boolean}}){
+export default function Studio({accessPassword='',account:googleAccount}:{accessPassword?:string;account?:{email:string;admin:boolean;picture?:string}}){
   const [input,setInput]=useState<Input>(initialInput),[plan,setPlan]=useState<Plan|null>(null),[assets,setAssets]=useState<SlideAsset[]>([]);
   const [phase,setPhase]=useState(0),[selected,setSelected]=useState(0),[tab,setTab]=useState<'text'|'image'>('text');
   const [reference,setReference]=useState<string>(),[usage,setUsage]=useState<Usage>(emptyUsage),[config,setConfig]=useState<Config|null>(null);
@@ -176,7 +176,9 @@ export default function Studio({accessPassword='',account:googleAccount}:{access
           if(view!=='editor'||await library.flush())form.submit();
           else setSwitching(false);
         }}><button className="nav-item" disabled={!!busy||exporting||switching}>ログアウト</button></form>}
-        <div className="profile"><div className="avatar">{googleAccount?<UserRound size={17} aria-hidden="true"/>:"M"}</div><div>{googleAccount?.email||"マイワークスペース"}<small>{googleAccount?.admin?"管理者":googleAccount?"Googleアカウント":"プライベートスタジオ"}</small></div></div>
+        <div className="profile"><div className="avatar">{googleAccount?<UserRound size={17} aria-hidden="true"/>:"M"}
+          {googleAccount?.picture&&<img key={googleAccount.picture} className="account-avatar" src={googleAccount.picture} alt="" referrerPolicy="no-referrer" onError={e=>{e.currentTarget.hidden=true;}}/>}
+        </div><div>{googleAccount?.email||"マイワークスペース"}<small>{googleAccount?.admin?"管理者":googleAccount?"Googleアカウント":"プライベートスタジオ"}</small></div></div>
       </div>
     </aside>
     <main inert={menuOpen} className="main" ref={top}>

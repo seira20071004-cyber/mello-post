@@ -7,18 +7,21 @@ import {finishGoogleLogin,googleSettings,startGoogleLogin} from '../lib/server/g
 
 const origin='https://mello.test';
 const admin='owner@gmail.com';
+const picture='https://lh3.googleusercontent.com/example-avatar';
 
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 
 async function login(email:string,sub:string) {
   const settings=googleSettings()!;
   const start=startGoogleLogin(settings);
-  const state=new URL(start.headers.get('location')!).searchParams.get('state');
+  const googleUrl=new URL(start.headers.get('location')!);
+  expect(googleUrl.searchParams.get('scope')?.split(' ')).toContain('profile');
+  const state=googleUrl.searchParams.get('state');
   const callback=new Request(origin+'/api/auth/google/callback?code=test&state='+state,{
     headers:{Cookie:start.headers.get('set-cookie')!.split(';')[0]},
   });
   const google=vi.fn().mockResolvedValueOnce(Response.json({access_token:'mock-token'}))
-    .mockResolvedValueOnce(Response.json({sub,email,email_verified:true}));
+    .mockResolvedValueOnce(Response.json({sub,email,email_verified:true,picture:sub==='other'?'https://example.test/avatar':picture}));
   vi.stubGlobal('fetch',google);
   const result=await finishGoogleLogin(callback,settings);
   expect(google).toHaveBeenCalledTimes(2);
@@ -39,7 +42,8 @@ it('allows only the owner to issue codes and enforces redemption and revocation 
     method:body?'POST':'GET',headers:{Origin:origin,Cookie:cookie,'Content-Type':'application/json'},
     body:body?JSON.stringify(body):undefined,
   });
-  expect((await config(req('/api/config',member))).status).toBe(200);
+  expect((await (await config(req('/api/config',member))).json()).account).toMatchObject({picture});
+  expect((await (await config(req('/api/config',other))).json()).account).not.toHaveProperty('picture');
   await expect(authorize(req('/api/plan',member),false)).rejects.toMatchObject({status:403});
   expect((await adminWrite(req('/api/auth/admin',member,{action:'issue'}))).status).toBe(403);
   const issued=await adminWrite(req('/api/auth/admin',owner,{action:'issue'}));

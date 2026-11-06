@@ -3,9 +3,18 @@ import {z} from 'zod';
 
 const sessionLifetime = 30 * 24 * 60 * 60;
 const flowLifetime = 10 * 60;
-const sessionSchema = z.object({sub:z.string().min(1).max(255),email:z.email(),exp:z.number().int()});
+const googlePicture = z.string().max(512).refine(value => {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
+      url.hostname.endsWith('.googleusercontent.com');
+  } catch {
+    return false;
+  }
+});
+const sessionSchema = z.object({sub:z.string().min(1).max(255),email:z.email(),picture:googlePicture.optional(),exp:z.number().int()});
 const flowSchema = z.object({state:z.string(),verifier:z.string(),exp:z.number().int()});
-const googleProfile = z.object({sub:z.string().min(1).max(255),email:z.email(),email_verified:z.literal(true),hd:z.string().optional()});
+const googleProfile = z.object({sub:z.string().min(1).max(255),email:z.email(),email_verified:z.literal(true),hd:z.string().optional(),picture:googlePicture.optional().catch(undefined)});
 const now = () => Math.floor(Date.now()/1000);
 
 export const usesGoogleLogin = () => process.env.APP_AUTH_MODE === 'google';
@@ -65,7 +74,7 @@ export function startGoogleLogin(settings:Settings) {
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   url.search = new URLSearchParams({
     client_id:settings.clientId,redirect_uri:settings.redirectUri,response_type:'code',
-    scope:'openid email',state,code_challenge:createHash('sha256').update(verifier).digest('base64url'),
+    scope:'openid email profile',state,code_challenge:createHash('sha256').update(verifier).digest('base64url'),
     code_challenge_method:'S256',prompt:'select_account',
   }).toString();
   const flow = sign({state,verifier,exp:now()+flowLifetime},'flow',settings);
@@ -95,10 +104,10 @@ export async function finishGoogleLogin(request:Request, settings:Settings) {
     // The profile comes directly from Google using the token just exchanged by this server.
     const profile = googleProfile.safeParse(await info.json());
     if (!profile.success) return fail('denied');
-    const {sub,hd} = profile.data;
+    const {sub,hd,picture} = profile.data;
     const email = profile.data.email.toLowerCase();
     if (!email.endsWith('@gmail.com') && !hd) return fail('denied');
-    const session = sign({sub,email,exp:now()+sessionLifetime},'session',settings);
+    const session = sign({sub,email,picture,exp:now()+sessionLifetime},'session',settings);
     return redirect(settings.origin+'/',[clearFlow,setCookie('session',session,sessionLifetime,settings)]);
   } catch { return fail('retry'); }
 }
