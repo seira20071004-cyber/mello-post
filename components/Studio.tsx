@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useMemo,useRef,useState,useCallback} from 'react';
-import {Menu,ArrowRight,ArrowLeft,ArrowUpRight,Check,ChevronDown,ChevronRight,Copy,Download,Flower2,HelpCircle,ImagePlus,Layers,Leaf,LoaderCircle,Palette,Plus,Settings2,ShieldCheck,Sparkles,Type,Upload,X,FileText,Bookmark,CheckCircle2,AlertCircle,LockKeyhole} from 'lucide-react';
+import {Menu,ArrowRight,ArrowLeft,ArrowUpRight,Check,ChevronDown,ChevronRight,Copy,Download,Flower2,HelpCircle,ImagePlus,Layers,Leaf,LoaderCircle,Palette,Plus,Settings2,ShieldCheck,Sparkles,Type,Upload,X,FileText,Bookmark,CheckCircle2,AlertCircle,LockKeyhole,UserRound} from 'lucide-react';
 import JSZip from 'jszip';
 import {emptyUsage,initialInput,inputSchema,inputIssues,validatePlan,type Input,type Plan,type Usage,type SlideAsset} from '@/lib/schema';
 import {artStyles} from '@/lib/art-styles';
@@ -24,6 +24,7 @@ import {appearancePatch} from '@/lib/appearance';
 import {characterAges} from '@/lib/characters';
 import {modes,creationModes,themeExamples,recommendedSlideCount,inputForMode,isNarrative,pendingImageCalls,usesSharedBackground,isAssetComplete,backgroundGroups,hasQuoteFlow} from '@/lib/modes';
 import {textBoxFor,newSlideAsset} from '@/lib/text-layout';
+import InviteManager from './InviteManager';
 import ProjectLibrary from './ProjectLibrary';
 import PersonCollection from './PersonCollection';
 import GettingStarted from './GettingStarted';
@@ -40,7 +41,7 @@ const examples=[{mode:'comic',label:'雨の日の小さなやさしさ'},{mode:'
 function Button({children,className='',...props}:React.ButtonHTMLAttributes<HTMLButtonElement>){return <button className={`button ${className}`} {...props}>{children}</button>;}
 function Field({label,hint,children,required=false,guide}:{label:string;hint?:string;children:React.ReactNode;required?:boolean;guide?:string}){return <>{guide&&<div data-guide-slot={guide}/>}<div className="field" data-guide-target={guide}><div className="field-title">{label}{required&&<span className="required">必須</span>}{hint&&<span className="field-hint">{hint}</span>}</div>{children}</div></>;}
 
-export default function Studio({accessPassword=''}:{accessPassword?:string}){
+export default function Studio({accessPassword='',account:googleAccount}:{accessPassword?:string;account?:{email:string;admin:boolean}}){
   const [input,setInput]=useState<Input>(initialInput),[plan,setPlan]=useState<Plan|null>(null),[assets,setAssets]=useState<SlideAsset[]>([]);
   const [phase,setPhase]=useState(0),[selected,setSelected]=useState(0),[tab,setTab]=useState<'text'|'image'>('text');
   const [reference,setReference]=useState<string>(),[usage,setUsage]=useState<Usage>(emptyUsage),[config,setConfig]=useState<Config|null>(null);
@@ -50,6 +51,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
   const projectContent=useMemo<ProjectContent>(()=>({input,plan,assets,usage,reference,isSample,phase,selected,tab}),[input,plan,assets,usage,reference,isSample,phase,selected,tab]);
   const library=useProjects(projectContent,view==='editor');
   const [guideLaunch,setGuideLaunch]=useState(0),[tutorialStep,setTutorialStep]=useState<TutorialStep|null>(null);
+  const [manageInvites,setManageInvites]=useState(false);
   const [help,setHelp]=useState(false),[exporting,setExporting]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false),[inspector,setInspector]=useState<'caption'|null>(null);
   const menuTrigger=useRef<HTMLButtonElement>(null),menuPanel=useRef<HTMLElement>(null);
@@ -165,7 +167,16 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
       <button className={`nav-item ${view==='collection'?'active':''}`} disabled={!!busy||exporting||switching||!library.ready} onClick={()=>{setMenuOpen(false);void showCollection();}}><Bookmark size={19}/>コレクション</button>
       <div className="sidebar-bottom"><div className="sidebar-note"><Leaf size={21}/><strong>ひとつの想いから、<br/>広がるあなたの世界。</strong><p>言葉も、デザインも。<br/>mellōがそっとお手伝い。</p></div>
         <button className="nav-item" onClick={()=>{setMenuOpen(false);setHelp(true);}}><HelpCircle size={19}/>使い方ガイド<ArrowUpRight size={15}/></button>
-        <div className="profile"><div className="avatar">M</div><div>マイワークスペース<small>プライベートスタジオ</small></div><Settings2 size={16}/></div>
+        {googleAccount?.admin&&<button className="nav-item" onClick={()=>{setMenuOpen(false);setManageInvites(true);}}><Settings2 size={19}/>招待・利用者管理</button>}
+        {googleAccount&&<form method="post" action="/api/auth/logout" onSubmit={async e=>{
+          e.preventDefault();
+          const form=e.currentTarget;
+          if(busy||exporting||switching)return;
+          setSwitching(true);
+          if(view!=='editor'||await library.flush())form.submit();
+          else setSwitching(false);
+        }}><button className="nav-item" disabled={!!busy||exporting||switching}>ログアウト</button></form>}
+        <div className="profile"><div className="avatar">{googleAccount?<UserRound size={17} aria-hidden="true"/>:"M"}</div><div>{googleAccount?.email||"マイワークスペース"}<small>{googleAccount?.admin?"管理者":googleAccount?"Googleアカウント":"プライベートスタジオ"}</small></div></div>
       </div>
     </aside>
     <main inert={menuOpen} className="main" ref={top}>
@@ -232,6 +243,7 @@ export default function Studio({accessPassword=''}:{accessPassword?:string}){
     </main>
     {toast&&<div className="toast" role="status"><CheckCircle2 size={19}/>{toast}</div>}
     <GettingStarted autoShow={false} launch={guideLaunch} onStart={beginTutorial} disabled={!library.ready||!!busy||exporting||switching}/>
+    {manageInvites&&<InviteManager onClose={()=>setManageInvites(false)}/>}
     <dialog ref={dialog} className="help-dialog" onCancel={()=>setHelp(false)}><button className="dialog-close icon-button" aria-label="閉じる" onClick={()=>setHelp(false)}><X size={22}/></button><div className="eyebrow">A GENTLE GUIDE</div><h2>はじめてのmellō</h2><p style={{marginBottom:16}}>テーマや想いを、Instagramの投稿画像とキャプションに整えるアプリです。</p><Button className="primary full" onClick={openGuide}><Sparkles size={17}/>無料のチュートリアル<ArrowRight size={17}/></Button><ol><li><strong>テーマを入力</strong><p>伝えたいこととモードを選びます。AIが構成・文章・キャプションを作り、校正します。</p></li><li><strong>文章を確認して、画像を生成</strong><p>「背景をつくる」を押したときだけ画像APIを呼び出します。生成前に文字や項目数を確認できます。</p></li><li><strong>自分らしく整えて保存</strong><p>物語・エッセイは文字エリアをドラッグして移動できます。エッセイは背景1枚を全ページで共有。文字やデザインの変更は無料。各スライドのPNGとキャプションをZIPで保存できます。</p></li></ol><div className="guide-note"><strong>料金と保存について</strong><p>OpenAIのAPI利用料が別途発生します。文章作成は通常2回、物語は全文生成・ページ分割・本文の独立点検の3回が基本です。整合性修正が必要なときは追加で1回校正します。背景1枚につき画像生成＋画像点検の2回が基本です。通信失敗でも料金が発生する場合があります。自動再試行はしません。</p><p>テーマごとに複数の投稿セットをマイスタジオへ自動保存します。入力途中・編集途中から再開でき、生成済み画像も保持します。保存先はこのブラウザです。別の端末とは同期されず、ブラウザのデータ削除で失われます。テーマ・参考画像は生成時にOpenAIへ送信されます。APIキーはサーバーだけで使用します。</p><p>画像の崩れや文章の正しさは完全に保証できません。投稿前に内容と画像をご確認ください。</p><p>画像比率は4:5（1080×1350）を初期値に、1:1（1080×1080）、9:16（1080×1920）から選べます。比率変更でもAI画像は再生成しません。</p></div><p className="connection-status">API設定：{config?.configured?'設定済み（接続は未検証）':'未設定'}<br/>文章：{config?.text} / 画像：{config?.image}</p><Button className="primary full" onClick={()=>setHelp(false)}>はじめる <ArrowRight size={17}/></Button></dialog>
 
 

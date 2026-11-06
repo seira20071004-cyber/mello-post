@@ -1,6 +1,8 @@
 import { mkdir, appendFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { timingSafeEqual, createHash } from 'node:crypto';
+import {inviteAccess} from './invites';
+import {googleSession,googleSettings,usesGoogleLogin} from './google-auth';
 import { z } from 'zod';
 import { emptyUsage, type Usage } from '../schema';
 
@@ -9,7 +11,7 @@ export const models = () => ({text:process.env.OPENAI_TEXT_MODEL || 'gpt-5-mini'
 const state=globalThis as typeof globalThis & {melloLimits?:Map<string,{start:number;calls:number}>,melloJobs?:Map<string,Promise<unknown>>,melloActive?:number};
 state.melloLimits ??= new Map();state.melloJobs ??=new Map();state.melloActive ??=0;
 
-export function authorize(request: Request,requireAI=true) {
+export async function authorize(request: Request,requireAI=true) {
   const origin=request.headers.get('origin');
   // Next may normalize request.url to localhost while the browser uses 127.0.0.1.
   // Match against the HTTP Host actually requested, never arbitrary forwarded headers.
@@ -19,12 +21,22 @@ export function authorize(request: Request,requireAI=true) {
     if(!['http:','https:'].includes(parsed.protocol)||parsed.host!==host)throw new AppError('このページから操作し直してください',403);
   }
   if(process.env.NODE_ENV==='development'&&!['localhost','127.0.0.1','[::1]'].includes(host.replace(/:\d+$/,'')))throw new AppError('開発サーバーはローカルホストから利用してください',403);
-  const password=process.env.APP_PASSWORD;
-  if(process.env.NODE_ENV==='production'&&!password)throw new AppError('本番環境ではサーバーのAPP_PASSWORDを設定してください',503);
-  if(password) {
-    const sent=request.headers.get('x-app-password') || '';
-    const a=Buffer.from(password),b=Buffer.from(sent);
-    if(a.length!==b.length || !timingSafeEqual(a,b))throw new AppError('利用パスワードを確認してください',401);
+  if (usesGoogleLogin()) {
+    const settings=googleSettings();
+    if (!settings) throw new AppError('Googleログインの設定が必要です。',503);
+    const session=googleSession(request,settings);
+    if (!session) throw new AppError('Googleでログインし直してください。',401);
+    if (session.email!==settings.adminEmail && await inviteAccess(session.sub)!=='active') {
+      throw new AppError('このアカウントには利用権限がありません。',403);
+    }
+  } else {
+    const password=process.env.APP_PASSWORD;
+    if(process.env.NODE_ENV==='production'&&!password)throw new AppError('本番環境ではサーバーのAPP_PASSWORDを設定してください',503);
+    if(password) {
+      const sent=request.headers.get('x-app-password') || '';
+      const a=Buffer.from(password),b=Buffer.from(sent);
+      if(a.length!==b.length || !timingSafeEqual(a,b))throw new AppError('利用パスワードを確認してください',401);
+    }
   }
   if(requireAI&&!process.env.OPENAI_API_KEY?.trim())throw new AppError('OpenAI APIキーが未設定です。サーバーの.env.localに設定して再起動してください。操作サンプルはAPIなしで試せます。',503);
 }

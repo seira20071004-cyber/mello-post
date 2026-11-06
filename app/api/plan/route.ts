@@ -9,7 +9,7 @@ export const runtime='nodejs';export const maxDuration=300;
 const schema=z.object({requestId:z.string().uuid(),input:inputSchema,reference:referenceSchema,plan:storedPlanSchema.optional(),index:z.number().int().min(0).max(9).optional()});
 export async function POST(request:Request) {
   try{
-    authorize(request);const body=schema.parse(await readBody(request));
+    await authorize(request);const body=schema.parse(await readBody(request));
     const issues=inputIssues(body.input);if(issues.length)throw new AppError(issues.join(' / '));
     const result=await withJob(request,body.requestId,body,async usage=>{
       if(body.plan && body.index!==undefined) {

@@ -11,7 +11,7 @@ export const runtime='nodejs';export const maxDuration=360;
 const schema=z.object({requestId:z.string().uuid(),input:inputSchema,plan:storedPlanSchema,index:z.number().int().min(0).max(9),reference:referenceSchema,textBox:textBoxSchema.optional(),referenceKind:z.enum(['style','continuity']).default('style'),panel:z.enum(['now','future']).default('now')});
 export async function POST(request:Request) {
   try{
-    authorize(request);const body=schema.parse(await readBody(request));
+    await authorize(request);const body=schema.parse(await readBody(request));
     const errors=validatePlan(body.plan,body.input);if(errors.length)throw new AppError(errors.join(' / '),422);
     const slide=body.plan.slides[body.index];if(!slide)throw new AppError('スライドがありません');
     if(body.input.mode==='comparison'&&body.panel==='future'&&!body.reference)throw new AppError('先に現在の画像を生成またはアップロードしてください。未来の画像は同じ画角を参考にして作ります。');
