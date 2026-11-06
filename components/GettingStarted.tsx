@@ -3,10 +3,10 @@ import {useEffect,useRef,useState} from 'react';
 import {ArrowRight,Flower2,MessageSquareText,PencilLine,Sparkles,X} from 'lucide-react';
 import {rememberWelcome,shouldShowWelcome} from '@/lib/onboarding';
 import styles from './GettingStarted.module.css';
-export default function GettingStarted({launch=0,onStart,disabled=false}:{launch?:number;onStart:()=>Promise<boolean>;disabled?:boolean}){
+export default function GettingStarted({launch=0,onStart,disabled=false,autoShow=true}:{autoShow?:boolean;launch?:number;onStart:()=>Promise<boolean>;disabled?:boolean}){
   const [open,setOpen]=useState(false),[starting,setStarting]=useState(false),[error,setError]=useState(''),[example,setExample]=useState(0);
   const dialog=useRef<HTMLDialogElement>(null);
-  useEffect(()=>{if(shouldShowWelcome(window.localStorage))setOpen(true);},[]);
+  useEffect(()=>{if(autoShow&&shouldShowWelcome(window.localStorage))setOpen(true);},[autoShow]);
   useEffect(()=>{if(launch){setError('');setOpen(true);}},[launch]);
   useEffect(()=>{if(open){if(!dialog.current?.open)dialog.current?.showModal();}else dialog.current?.close();},[open]);
   function close(){rememberWelcome(window.localStorage);setOpen(false);}
