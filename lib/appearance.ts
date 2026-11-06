@@ -1,8 +1,10 @@
 import {z} from 'zod';
+import {photoLayerSchema} from './photo-layers';
 import type {Input,SlideAsset} from './schema';
 import {templates} from './templates';
 export const extraTextBoxSchema=z.object({id:z.string().regex(/^[a-zA-Z0-9-]{1,64}$/),text:z.string().max(300),x:z.number().min(0).max(1),y:z.number().min(0).max(1),width:z.number().min(.12).max(1),height:z.number().min(.045).max(1),fontSize:z.number().min(20).max(160)});
 export const appearanceSchema=z.object({
+  photoLayers:z.array(photoLayerSchema).max(8).optional(),
   extraTextBoxes:z.array(extraTextBoxSchema).max(30).optional(),
   textFormats:z.record(z.string(),z.object({text:z.string().max(2100),marks:z.array(z.object({start:z.number().int().min(0).max(2100),end:z.number().int().min(1).max(2100),bold:z.boolean().optional(),underline:z.boolean().optional(),color:z.string().regex(/^#[0-9a-fA-F]{6}$/).optional()})).max(2100)})).optional(),
   writingMode:z.enum(['horizontal','vertical']).optional(),

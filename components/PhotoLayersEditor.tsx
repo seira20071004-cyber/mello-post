@@ -1,0 +1,30 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
+import type {SlideAsset} from '@/lib/schema';
+import type {RenderReport} from '@/lib/render';
+import {loadImage} from '@/lib/render';
+import {newPhotoLayer,reactions,type PhotoLayer} from '@/lib/photo-layers';
+export default function PhotoLayersEditor({asset,report,host,onChange}:{asset:SlideAsset;report:RenderReport|null;host:HTMLElement|null;onChange:(patch:Partial<SlideAsset>)=>void}){
+  const area=useRef<HTMLDivElement>(null),picker=useRef<HTMLDetailsElement>(null),drag=useRef<{pointer:number;x:number;y:number;photo:PhotoLayer;resize:boolean}|null>(null);
+  const [active,setActive]=useState<string|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(false);
+  const photos=asset.photoLayers||[],selected=photos.find(p=>p.id===active);
+  useEffect(()=>{const outside=(e:PointerEvent)=>{if(e.target instanceof Element&&!area.current?.contains(e.target)&&!e.target.closest('[data-photo-tools]'))setActive(null);};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
+  function update(id:string,patch:Partial<PhotoLayer>){onChange({photoLayers:photos.map(p=>p.id===id?{...p,...patch}:p)});}
+  function add(data:string,width:number,height:number,label:string){if(!report||photos.length>=8)return;const photo=newPhotoLayer(crypto.randomUUID(),data,label,width,height,report.width/report.height);onChange({photoLayers:[...photos,photo]});setActive(photo.id);if(picker.current)picker.current.open=false;}
+  async function upload(file:File|undefined){if(!file)return;setError('');setLoading(true);try{if(!['image/png','image/jpeg','image/webp'].includes(file.type))throw new Error('PNG・JPEG・WebP画像を選んでください');if(file.size>10*1024*1024)throw new Error('写真は10MB以下にしてください');const bitmap=await createImageBitmap(file),scale=Math.min(1,1024/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d')!.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();add(canvas.toDataURL('image/png'),canvas.width,canvas.height,'写真');if(picker.current)picker.current.open=false;}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
+  async function sticker(id:string,name:string){setError('');try{const path=`/reactions/${id}.svg`,image=await loadImage(path);add(path,image.naturalWidth,image.naturalHeight,name);}catch{setError('イラストを読み込めませんでした');}}
+  function begin(e:React.PointerEvent,photo:PhotoLayer,resize=false){if(e.button!==0)return;e.preventDefault();e.stopPropagation();setActive(photo.id);e.currentTarget.setPointerCapture(e.pointerId);drag.current={pointer:e.pointerId,x:e.clientX,y:e.clientY,photo,resize};}
+  const controls=<div className="photo-tools" data-photo-tools>
+    <details ref={picker}><summary>＋ 写真・効果素材</summary><div className="photo-picker"><strong>自分の写真で、自分らしく</strong><p>写真をそのまま、スライドの好きな場所へ置けます。透明背景のPNGも使えます。</p><label className="button">{loading?'写真を読み込み中…':'写真を追加'}<input aria-label="投稿に重ねる写真" type="file" accept="image/png,image/jpeg,image/webp" disabled={photos.length>=8||loading} onChange={e=>{void upload(e.target.files?.[0]);e.target.value='';}}/></label><small>写真はAIへ送信しません。1ページ8点まで。</small><p>ギザギザや集中線など、写真や文字に重ねる24種類の素材です。</p>{[...new Set(reactions.map(r=>r.group))].map(group=><section className="reaction-group" key={group}><strong>{group}</strong><div className="reaction-options">{reactions.filter(r=>r.group===group).map(r=><button key={r.id} type="button" disabled={photos.length>=8||loading} onClick={()=>void sticker(r.id,r.name)}><img src={`/reactions/${r.id}.svg`} alt=""/>{r.name}</button>)}</div></section>)}{error&&<p role="alert">{error}</p>}</div></details>
+    {selected&&<><span className="photo-selection-label">{selected.label}</span><button type="button" onClick={()=>update(selected.id,{mirrored:!selected.mirrored})}>左右反転</button><button type="button" onClick={()=>{onChange({photoLayers:photos.filter(p=>p.id!==active)});setActive(null);}}>削除</button><button type="button" onClick={()=>setActive(null)}>完了</button></>}
+  </div>;
+  return <>{host&&createPortal(controls,host)}<div className="photo-layer-overlay" ref={area}>
+    {report&&photos.map((photo,i)=><div key={photo.id} className={`photo-layer-frame ${active===photo.id?'active':''}`} style={{left:`${photo.x*100}%`,top:`${photo.y*100}%`,width:`${photo.width*100}%`,height:`${photo.height*100}%`}}
+      onPointerMove={e=>{const d=drag.current,rect=area.current?.getBoundingClientRect();if(!d||d.pointer!==e.pointerId||!rect)return;const dx=(e.clientX-d.x)/rect.width,dy=(e.clientY-d.y)/rect.height,p=d.photo;if(d.resize){const factor=Math.min((1-p.x)/p.width,(1-p.y)/p.height,Math.max(.1/Math.max(p.width,p.height),1+(dx/p.width+dy/p.height)/2));update(photo.id,{width:p.width*factor,height:p.height*factor});}else update(photo.id,{x:Math.max(0,Math.min(1-p.width,p.x+dx)),y:Math.max(0,Math.min(1-p.height,p.y+dy))});}}
+      onPointerUp={()=>{drag.current=null;}} onPointerCancel={()=>{drag.current=null;}}>
+      <button className="photo-layer-hit" type="button" aria-label={`${photo.label} ${i+1}を選択・移動`} aria-pressed={active===photo.id} onPointerDown={e=>begin(e,photo)} onFocus={()=>setActive(photo.id)} onKeyDown={e=>{if(e.key==='Escape'){setActive(null);return;}if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();onChange({photoLayers:photos.filter(p=>p.id!==photo.id)});setActive(null);return;}const delta={ArrowLeft:[-.01,0],ArrowRight:[.01,0],ArrowUp:[0,-.01],ArrowDown:[0,.01]}[e.key];if(delta){e.preventDefault();update(photo.id,{x:Math.max(0,Math.min(1-photo.width,photo.x+delta[0])),y:Math.max(0,Math.min(1-photo.height,photo.y+delta[1]))});}}}/>
+      {active===photo.id&&<button type="button" className="photo-layer-resize" aria-label={`${photo.label}の大きさを変更`} onPointerDown={e=>begin(e,photo,true)}/>}
+    </div>)}
+  </div></>;
+}

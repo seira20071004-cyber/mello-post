@@ -208,10 +208,11 @@ function drawReadingSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Slide
     ctx.save();ctx.globalAlpha=.16;ctx.fillStyle=t.accent;
     for(let n=0;n<4;n++){ctx.beginPath();ctx.ellipse(W*(.63+n*.07),H*(.90-n*.035),85,145,.4+n*.25,0,Math.PI*2);ctx.fill();}ctx.restore();
   }
+  if(input.mode==='personal'&&!image){ctx.fillStyle='#fff9e9';ctx.fillRect(0,0,W,H);for(const [px,py,r,c] of [[.96,.08,.12,'#ffce49'],[.02,.77,.10,'#ff8a76'],[.91,.92,.065,'#50bfb3']] as const){ctx.fillStyle=c;ctx.beginPath();ctx.arc(W*px,H*py,W*r,0,Math.PI*2);ctx.fill();}}
   const quoteFlow=hasQuoteFlow(input,plan),quoteEnding=quoteFlow&&index===plan.slides.length-1;
   if(quoteEnding&&!image){round(ctx,30,30,W-60,H-60,24,t.line);round(ctx,W*.06,H*.12,W*.88,H*.64,16,t.paper);}
   const box=textBoxFor(input,asset,cover,quoteEnding),x=box.x*W,y=box.y*H,w=box.width*W,h=box.height*H;
-  const ink=colorFor(input,asset),light=readableInk(ink)==='#241e24',font=fontFor(asset,input.mode==='comic'||(quoteFlow&&cover)?'Noto Sans JP':t.font);
+  const ink=colorFor(input,asset),light=readableInk(ink)==='#241e24',font=fontFor(asset,input.mode==='personal'?'Zen Maru Gothic':input.mode==='comic'||(quoteFlow&&cover)?'Noto Sans JP':t.font);
   const scale=asset.fontScale||1,align=asset.textAlign||(quoteEnding?'center':'left'),vertical=(asset.writingMode||(!cover&&input.mode==='comic'?'vertical':'horizontal'))==='vertical';
   const title=cover?s.title:'',body=s.body;
   let bodyY=y;
@@ -270,8 +271,9 @@ function drawComparisonSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Sl
   }
   ctx.fillStyle=t.paper;ctx.fillRect(0,half,W,8);return report;
 }
-export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource,futureImage?:CanvasImageSource):RenderReport{
+export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource,futureImage?:CanvasImageSource,photoImages:CanvasImageSource[]=[]):RenderReport{
  const report=drawBaseSlide(ctx,plan,input,index,asset,image,futureImage),t=tokens(input);
+ for(const [i,photo] of (asset.photoLayers||[]).entries()){const image=photoImages[i];if(!image)continue;ctx.save();const x=photo.x*report.width,y=photo.y*report.height,w=photo.width*report.width,h=photo.height*report.height;if(photo.mirrored){ctx.translate(x+w,y);ctx.scale(-1,1);ctx.drawImage(image,0,0,w,h);}else ctx.drawImage(image,x,y,w,h);ctx.restore();}
  for(const box of asset.extraTextBoxes||[]){const start=report.textRegions?.length||0;ctx.save();ctx.textAlign='left';block(ctx,box.text,box.x*report.width,box.y*report.height,box.width*report.width,box.height*report.height,box.fontSize*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report,400,{kind:'box',id:box.id});const r=report.textRegions?.[start];if(r&&asset.textPlacements?.[r.id]?.height===undefined)r.height=box.height*report.height;ctx.restore();}return report;
 }
 let fontsReady: Promise<void> | undefined;
@@ -289,7 +291,8 @@ export async function renderCanvas(canvas: HTMLCanvasElement, plan: Plan, input:
   await Promise.all([`700 40px "${fontFor(asset,tokens(input).font)}"`,'700 40px "Noto Sans JP"','700 40px "Noto Serif JP"',`400 40px "${fontFor(asset,'Noto Sans JP')}"`,`600 70px "${fontFor(asset,'Noto Sans JP')}"`,'400 40px "Noto Sans JP"','400 40px "Noto Serif JP"','500 40px "Noto Sans JP"','600 70px "Noto Serif JP"','600 70px "Noto Sans JP"'].map(font=>document.fonts.load(font,content)));
   const image=asset.image?await loadImage(asset.image):undefined;
   const futureImage=input.mode==='comparison'&&asset.futureImage?await loadImage(asset.futureImage):undefined;
-  return drawSlide(canvas.getContext('2d')!,plan,input,index,asset,image,futureImage);
+  const photoImages=await Promise.all((asset.photoLayers||[]).map(photo=>loadImage(photo.source)));
+  return drawSlide(canvas.getContext('2d')!,plan,input,index,asset,image,futureImage,photoImages);
 }
 export async function pngBlob(plan: Plan,input: Input,index: number,asset: SlideAsset) {
   const canvas=document.createElement('canvas'); const report=await renderCanvas(canvas,plan,input,index,asset);

@@ -1,5 +1,6 @@
 import type {Input,SlideAsset,TextBox} from './schema';
 export function defaultTextBox(input:Pick<Input,'mode'>,cover=false,ending=false):TextBox{
+  if(input.mode==='personal')return {x:.08,y:.10,width:.84,height:.36};
   if(input.mode==='comic')return cover?{x:.10,y:.12,width:.80,height:.40}:{x:.18,y:.09,width:.64,height:.40};
   if(input.mode==='quote'&&ending)return {x:.12,y:.28,width:.76,height:.38};
   if(input.mode==='quote')return cover?{x:.10,y:.16,width:.80,height:.48}:{x:.10,y:.28,width:.80,height:.34};
@@ -13,6 +14,7 @@ export function textBoxFor(input:Pick<Input,'mode'>,asset:SlideAsset,cover=false
 // New comics use a shallower text area to leave faces clear. Store it on the
 // new asset so opening an older draft keeps that draft's existing defaults.
 export function newSlideAsset(input:Pick<Input,'mode'>,index:number):SlideAsset{
+  if(input.mode==='personal')return {fontScale:1,textFont:'rounded',textColor:'#254b61',textSurface:'none',writingMode:'horizontal'};
   return input.mode==='comic'&&index>0?{fontScale:1,textBox:{...defaultTextBox(input),height:.25}}:{fontScale:1};
 }
 export function positionTextBox(box:TextBox,position:'top'|'bottom'|'left'|'right'):TextBox{
