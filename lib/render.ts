@@ -273,7 +273,7 @@ function drawComparisonSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:Sl
 }
 export function drawSlide(ctx:Ctx,plan:Plan,input:Input,index:number,asset:SlideAsset,image?:CanvasImageSource,futureImage?:CanvasImageSource,photoImages:CanvasImageSource[]=[]):RenderReport{
  const report=drawBaseSlide(ctx,plan,input,index,asset,image,futureImage),t=tokens(input);
- for(const [i,photo] of (asset.photoLayers||[]).entries()){const image=photoImages[i];if(!image)continue;ctx.save();const x=photo.x*report.width,y=photo.y*report.height,w=photo.width*report.width,h=photo.height*report.height;if(photo.mirrored){ctx.translate(x+w,y);ctx.scale(-1,1);ctx.drawImage(image,0,0,w,h);}else ctx.drawImage(image,x,y,w,h);ctx.restore();}
+ for(const [i,photo] of (asset.photoLayers||[]).entries()){const image=photoImages[i];if(!image)continue;ctx.save();const x=photo.x*report.width,y=photo.y*report.height,w=photo.width*report.width,h=photo.height*report.height;ctx.translate(x+w/2,y+h/2);ctx.rotate((photo.rotation||0)*Math.PI/180);if(photo.mirrored)ctx.scale(-1,1);ctx.drawImage(image,-w/2,-h/2,w,h);ctx.restore();}
  for(const box of asset.extraTextBoxes||[]){const start=report.textRegions?.length||0;ctx.save();ctx.textAlign='left';block(ctx,box.text,box.x*report.width,box.y*report.height,box.width*report.width,box.height*report.height,box.fontSize*(asset.fontScale||1),fontFor(asset,t.font),colorFor(input,asset),report,400,{kind:'box',id:box.id});const r=report.textRegions?.[start];if(r&&asset.textPlacements?.[r.id]?.height===undefined)r.height=box.height*report.height;ctx.restore();}return report;
 }
 let fontsReady: Promise<void> | undefined;

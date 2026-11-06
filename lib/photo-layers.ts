@@ -2,7 +2,7 @@ import {z} from 'zod';
 export const photoLayerSchema=z.object({
   id:z.string().regex(/^[a-zA-Z0-9-]{1,64}$/),
   source:z.string().max(8_000_000).regex(/^(?:data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+|\/reactions\/(?:surprised|cheer|rest|burst|shock|rays|surprise-lines|sweat|anger|gloom|scribble|spiral|laugh-lines|sparkles|stars|hearts|confetti|flower|arrow|speech|cloud-bubble|underline|circle|speed|tape|idea|rain-cloud)\.svg)$/),
-  label:z.string().max(60),x:z.number().min(0).max(1),y:z.number().min(0).max(1),width:z.number().min(.00001).max(1),height:z.number().min(.00001).max(1),mirrored:z.boolean().optional(),
+  label:z.string().max(60),x:z.number().min(0).max(1),y:z.number().min(0).max(1),width:z.number().min(.00001).max(1),height:z.number().min(.00001).max(1),mirrored:z.boolean().optional(),rotation:z.number().min(-180).max(180).optional(),
 });
 export type PhotoLayer=z.infer<typeof photoLayerSchema>;
 export function newPhotoLayer(id:string,source:string,label:string,imageWidth:number,imageHeight:number,canvasRatio:number):PhotoLayer{
@@ -36,3 +36,13 @@ export const reactions=[
   {id:'rain-cloud',name:'雨雲',group:'飾り・ふきだし'}
 ] as const;
 
+
+export function normalizeRotation(degrees:number){if(degrees>=-180&&degrees<=180)return degrees;return ((degrees+180)%360+360)%360-180;}
+export function rotatePhotoLayer(photo:PhotoLayer,degrees:number,canvasRatio:number):PhotoLayer{
+  const rotation=normalizeRotation(degrees),angle=rotation*Math.PI/180,c=Math.abs(Math.cos(angle)),s=Math.abs(Math.sin(angle));
+  const bw=photo.width*c+photo.height/canvasRatio*s,bh=photo.width*canvasRatio*s+photo.height*c;
+  const factor=Math.min(1,1/Math.max(bw,.00001),1/Math.max(bh,.00001));
+  const width=photo.width*factor,height=photo.height*factor,halfW=bw*factor/2,halfH=bh*factor/2;
+  const cx=Math.max(halfW,Math.min(1-halfW,photo.x+photo.width/2)),cy=Math.max(halfH,Math.min(1-halfH,photo.y+photo.height/2));
+  return {...photo,rotation,width,height,x:cx-width/2,y:cy-height/2};
+}
