@@ -1,0 +1,53 @@
+{
+  "version": "1.3.0",
+  "status": "published",
+  "date": "2026-11-07",
+  "authorization": "User approved the reviewed mobile version and explicitly requested publication and GitHub synchronization.",
+  "previous": {
+    "github_tag": "v1.2.0",
+    "hosting": {
+      "provider": "Sites / Cloudflare Workers",
+      "url": "https://mello-post-studio.seira20071004.chatgpt.site",
+      "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
+      "saved_version_number": 6,
+      "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_a422d97a0af881919351bbb04557a1b5",
+      "source_commit": "a5d066d5c95eeddad1511e55786f08a44230060e",
+      "deployment_id": "appgdep_6ae09e9a7aa48191a19bb634837c3102",
+      "environment_revision": 2,
+      "published_at": "2026-10-27T12:53:06.416792+00:00"
+    }
+  },
+  "application_source_commit": "d24ba0ca20e097cfb2463935125cba8283ccc4d5",
+  "hosting": {
+    "provider": "Sites / Cloudflare Workers",
+    "url": "https://mello-post-studio.seira20071004.chatgpt.site",
+    "project_id": "appgprj_6adeebce3eb4819188836580c460d3dc",
+    "saved_version_number": 8,
+    "saved_version_id": "appgprj_6adeebce3eb4819188836580c460d3dc~appgver_a3099728148c819196e0e7859de97057",
+    "source_commit": "b5e6785f68f99ff8ffc89f0571756fde1c103ffe",
+    "deployment_id": "appgdep_6aee75bd8a508191a71d93985ce3dc2e",
+    "environment_revision": 2,
+    "published_at": "2026-11-07T00:50:28.644121+00:00",
+    "r2_binding": "BUCKET"
+  },
+  "github_tag": "v1.3.0",
+  "verification": {
+    "automated_tests_passed": 277,
+    "source_typecheck": "passed during local review",
+    "nextjs_build": "passed during local review",
+    "hosting_build": "passed",
+    "mobile_browser": "390 x 844 local browser viewport verified; physical phone unverified",
+    "public_home": "HTTP 200",
+    "public_receive": "HTTP 200",
+    "public_config": "HTTP 200, API configured, password required",
+    "public_access": "unauthenticated POST rejected with HTTP 401",
+    "public_ai_generation": "not repeated",
+    "public_qr_roundtrip": "not verified"
+  },
+  "hosting_adjustments": [
+    "Enabled R2 BUCKET and connected the existing transfer adapter in worker entrypoint.",
+    "Removed byte-identical duplicate server fonts from build output while retaining all client font assets. Initial version 7 failed the Worker size limit; version 8 succeeded."
+  ],
+  "authentication": "Production uses existing password authentication. Google OAuth credentials and persistent invitation configuration are absent in production, so Google login was not enabled.",
+  "data_storage": "Browser-local drafts and collections retained. Git tags do not back up browser data."
+}
