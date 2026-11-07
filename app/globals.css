@@ -227,3 +227,37 @@
 #individual-pngs{scroll-margin-top:65px}
 
 #send-to-phone{scroll-margin-top:65px}
+
+.touch-text-edit{display:none}
+#output-reason .button{margin-top:8px}
+@media(max-width:600px){
+  .slide-workspace .content{padding-inline:8px}
+  .slide-workspace .top-status{display:none}
+  .slide-desk{display:flex;flex-direction:column;gap:6px;height:calc(100dvh - 54px);min-height:500px}
+  .slide-desk>.workspace-heading{min-height:44px;padding:4px}
+  .slide-desk .workspace-heading h2{max-width:48vw}
+  .workspace-output{gap:3px 7px}
+  .workspace-output .button{min-height:38px;padding:4px 8px;font-size:11px}
+  .slide-desk>.slide-strip{flex:none;flex-direction:row;overflow:auto;gap:6px;padding:3px 4px 5px}
+  .slide-desk .thumbnail{width:48px}
+  .slide-desk .thumbnail .slide-preview{max-height:42px}
+  .slide-desk .thumb-label{font-size:0;min-height:14px;padding:2px;justify-content:center}
+  .slide-desk .thumb-label strong{font-size:10px}
+  .slide-desk .thumb-label .pending-dot{display:none}
+  .slide-desk>.editor-grid{flex:1}
+  .slide-desk .canvas-toolbar{min-height:25px;padding:2px 8px}
+  .slide-desk .canvas-footer .button{min-height:36px}
+  .slide-desk>.workspace-ribbon{order:1;position:relative;flex:none;margin:0;padding:4px}
+  .workspace-ribbon .ribbon-main,.workspace-ribbon .ribbon-panels{flex-wrap:wrap}
+  .workspace-ribbon .text-settings{display:none}
+  .slide-desk:has(.direct-text-frame.active):not(:has(.direct-text-frame.editing)) .text-settings{
+    display:flex;position:absolute;bottom:100%;left:0;right:0;z-index:8;
+    margin:0;padding:8px;max-height:32dvh;overflow:auto;
+    background:white;border:1px solid var(--line);border-radius:9px;box-shadow:0 4px 18px #302c3322
+  }
+  .workspace-ribbon .touch-text-edit{display:inline-flex;align-items:center;background:var(--pink-light)}
+  .workspace-ribbon .ribbon-text-tools .text-object-toolbar,.workspace-ribbon .ribbon-text-tools .direct-format-toolbar{flex-wrap:wrap}
+  .workspace-ribbon .photo-picker{top:auto;bottom:70px;max-height:65dvh}
+  .slide-desk>.caption-panel{top:auto;bottom:65px;width:calc(100vw - 16px);max-height:65dvh}
+  .slide-workspace:has([data-guide-current]) .slide-desk{height:calc(100dvh - 54px)}
+}

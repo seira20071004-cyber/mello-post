@@ -23,7 +23,8 @@ export default function EditorViewport({ratio,children}:{ratio:number;children:R
     if(element)center.current={x:(element.scrollLeft+element.clientWidth/2)/element.scrollWidth,y:(element.scrollTop+element.clientHeight/2)/element.scrollHeight};
     setZoom(Math.min(300,Math.max(50,next)));
   }
-  const fit=Math.max(1,Math.min(bounds.width-48,(bounds.height-48)*ratio));
+  const gutter=bounds.width<480?12:48;
+  const fit=Math.max(1,Math.min(bounds.width-gutter,(bounds.height-gutter)*ratio));
   const width=fit*zoom/100,height=width/ratio;
   return <>
     <div className="canvas-zoom-toolbar" data-text-tools role="toolbar" aria-label="スライドの表示倍率">
@@ -35,7 +36,7 @@ export default function EditorViewport({ratio,children}:{ratio:number;children:R
       <button type="button" className="button" onClick={()=>changeZoom(100)} title="スライド全体が収まる大きさに戻す"><Scan size={15}/>全体表示</button>
     </div>
     <div className="editor-viewport" ref={viewport} aria-label="スライド編集エリア" tabIndex={0}>
-      <div className="zoom-surface" style={{width:width+48,height:height+48}}>
+      <div className="zoom-surface" style={{width:width+gutter,height:height+gutter,padding:gutter/2}}>
         <div className="position-stage" style={{width,height,visibility:bounds.width?'visible':'hidden'}}>{children}</div>
       </div>
     </div>
