@@ -20,11 +20,15 @@ async function login(email:string,sub:string) {
   const callback=new Request(origin+'/api/auth/google/callback?code=test&state='+state,{
     headers:{Cookie:start.headers.get('set-cookie')!.split(';')[0]},
   });
-  const google=vi.fn().mockResolvedValueOnce(Response.json({access_token:'mock-token'}))
+  const google=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({access_token:'mock-token'}))
     .mockResolvedValueOnce(Response.json({sub,email,email_verified:true,picture:sub==='other'?'https://example.test/avatar':picture}));
   vi.stubGlobal('fetch',google);
   const result=await finishGoogleLogin(callback,settings);
   expect(google).toHaveBeenCalledTimes(2);
+  for(const [,options] of google.mock.calls) {
+    // Cloudflare supports manual redirects and rejects the Node-only error mode.
+    expect(options?.redirect).toBe('manual');
+  }
   const session=result.headers.getSetCookie().find(value=>value.startsWith('__Host-mello-session='));
   expect(session).toContain('HttpOnly');
   expect(session).toContain('Secure');

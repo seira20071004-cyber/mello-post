@@ -83,33 +83,49 @@ export function startGoogleLogin(settings:Settings) {
 
 export async function finishGoogleLogin(request:Request, settings:Settings) {
   const clearFlow = setCookie('flow','',0,settings);
-  const fail = (reason:string) => redirect(settings.origin+'/?login='+reason,[clearFlow]);
+  const fail = (reason:string, stage:string) => {
+    console.error('Google login failed', {stage});
+    return redirect(settings.origin+'/?login='+reason,[clearFlow]);
+  };
   const params = new URL(request.url).searchParams;
   const flow = flowSchema.safeParse(readSigned(request,'flow',settings));
   const code = params.get('code');
-  if (!flow.success || flow.data.exp<=now() || flow.data.state!==params.get('state') || !code) return fail('retry');
+  if (!flow.success || flow.data.exp<=now() || flow.data.state!==params.get('state') || !code) return fail('retry','flow');
 
+  let phase='token-fetch';
   try {
     const token = await fetch('https://oauth2.googleapis.com/token',{
-      method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10000),
+      method:'POST',redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(10000),
       body:new URLSearchParams({code,client_id:settings.clientId,client_secret:settings.clientSecret,
         redirect_uri:settings.redirectUri,grant_type:'authorization_code',code_verifier:flow.data.verifier}),
     });
-    if (!token.ok) return fail('retry');
+    phase='token-response';
+    if (!token.ok) {
+      const error = z.object({error:z.string().max(64)}).safeParse(await token.json());
+      const category = error.success && ['invalid_client','invalid_grant','invalid_request','unauthorized_client'].includes(error.data.error) ? error.data.error : 'unknown';
+      return fail('retry','token:'+category);
+    }
     const access = z.object({access_token:z.string().min(1)}).parse(await token.json());
+    phase='profile-fetch';
     const info = await fetch('https://openidconnect.googleapis.com/v1/userinfo',{
-      headers:{Authorization:'Bearer '+access.access_token},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10000),
+      headers:{Authorization:'Bearer '+access.access_token},redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(10000),
     });
-    if (!info.ok) return fail('retry');
+    phase='profile-response';
+    if (!info.ok) return fail('retry','profile');
     // The profile comes directly from Google using the token just exchanged by this server.
     const profile = googleProfile.safeParse(await info.json());
-    if (!profile.success) return fail('denied');
+    if (!profile.success) return fail('denied','profile-validation');
     const {sub,hd,picture} = profile.data;
     const email = profile.data.email.toLowerCase();
-    if (!email.endsWith('@gmail.com') && !hd) return fail('denied');
+    if (!email.endsWith('@gmail.com') && !hd) return fail('denied','profile-validation');
+    phase='session-cookie';
     const session = sign({sub,email,picture,exp:now()+sessionLifetime},'session',settings);
     return redirect(settings.origin+'/',[clearFlow,setCookie('session',session,sessionLifetime,settings)]);
-  } catch { return fail('retry'); }
+  } catch (error) {
+    const name=error instanceof Error ? error.name : 'UnknownError';
+    console.error('Google login exception', {phase,name});
+    return fail('retry',phase);
+  }
 }
 
 export function endGoogleLogin(request:Request, settings:Settings) {
