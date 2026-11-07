@@ -26,7 +26,24 @@ function localDatabase() {
   }).catch(error=>{local=undefined;throw error;});
 }
 
+interface InvitationDatabase {
+  prepare(sql:string): {
+    bind(...values:Parameter[]): {
+      all<T>():Promise<{results:T[];success:boolean}>;
+    };
+  };
+}
+let hostedDatabase:InvitationDatabase|undefined;
+export function configureInviteDatabase(database:InvitationDatabase) {
+  hostedDatabase=database;
+}
+
 const query:Query = async <T>(sql:string,...params:Parameter[])=>{
+  if(hostedDatabase) {
+    const result=await hostedDatabase.prepare(sql).bind(...params).all<T>();
+    if(!result.success)throw new Error('Invitation database query failed');
+    return result.results;
+  }
   const {APP_D1_ACCOUNT_ID:account,APP_D1_DATABASE_ID:database,APP_D1_TOKEN:token}=process.env;
   if(account&&database&&token){
     const url=`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/d1/database/${encodeURIComponent(database)}/query`;
