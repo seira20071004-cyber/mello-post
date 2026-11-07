@@ -9,19 +9,19 @@ async function thumbnailFor(snapshot:ProjectContent):Promise<string|undefined>{
   const full=document.createElement('canvas');await renderCanvas(full,snapshot.plan,snapshot.input,0,snapshot.assets[0]);
   const small=document.createElement('canvas');small.width=240;small.height=Math.round(240*full.height/full.width);small.getContext('2d')!.drawImage(full,0,0,small.width,small.height);return small.toDataURL('image/jpeg',.78);
 }
-export function useProjects(content:ProjectContent,enabled:boolean){
+export function useProjects(content:ProjectContent,enabled:boolean,scope?:string){
   const [projects,setProjects]=useState<ProjectSummary[]>([]),[ready,setReady]=useState(false),[status,setStatus]=useState(''),[failure,setFailure]=useState('');
   const identity=useRef<Identity|null>(null),latest=useRef(content),dirty=useRef(false),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),skip=useRef(false),queue=useRef(Promise.resolve()),pending=useRef(0),enabledRef=useRef(enabled),readyRef=useRef(false);
   latest.current=content;enabledRef.current=enabled;
-  const refresh=useCallback(async()=>{const all=await listProjects();setProjects(all);readyRef.current=true;setReady(true);setFailure('');return all;},[]);
-  useEffect(()=>{let canceled=false;listProjects().then(async all=>{
+  const refresh=useCallback(async()=>{const all=await listProjects(scope);setProjects(all);readyRef.current=true;setReady(true);setFailure('');return all;},[scope]);
+  useEffect(()=>{let canceled=false;listProjects(scope).then(async all=>{
     if(canceled)return;setProjects(all);readyRef.current=true;setReady(true);
     // Legacy migration keeps all source data synchronously; previews are filled in later.
     for(const p of all.filter(p=>!p.thumbnail&&p.stage!=='idea')){
       if(canceled)break;
-      try{const thumbnail=await thumbnailFor(await readProject(p.id));if(thumbnail&&!canceled){await cacheProjectThumbnail(p.id,p.revision,thumbnail);setProjects(current=>current.map(item=>item.id===p.id&&item.revision===p.revision?{...item,thumbnail}:item));}}catch{ /* Preview generation never blocks opening saved content. */ }
+      try{const thumbnail=await thumbnailFor(await readProject(p.id,scope));if(thumbnail&&!canceled){await cacheProjectThumbnail(p.id,p.revision,thumbnail,scope);setProjects(current=>current.map(item=>item.id===p.id&&item.revision===p.revision?{...item,thumbnail}:item));}}catch{ /* Preview generation never blocks opening saved content. */ }
     }
-  }).catch(()=>{if(!canceled){setFailure('マイスタジオを読み込めませんでした。ブラウザの保存設定をご確認ください。');setStatus('保存機能を利用できません');}});return()=>{canceled=true;};},[]);
+  }).catch(()=>{if(!canceled){setFailure('マイスタジオを読み込めませんでした。ブラウザの保存設定をご確認ください。');setStatus('保存機能を利用できません');}});return()=>{canceled=true;};},[scope]);
 
   const flush=useCallback(async():Promise<boolean>=>{
     clearTimeout(timer.current);
@@ -37,15 +37,15 @@ export function useProjects(content:ProjectContent,enabled:boolean){
     const work=queue.current.then(async()=>{
       let thumbnail:string|undefined;
       if(snapshot.plan)try{thumbnail=await thumbnailFor(snapshot);}catch{ /* A font or preview error must never discard the editable project. */ }
-      const saved=await saveProject({...snapshot,version:2,id:owner.id,createdAt:owner.createdAt,savedAt:Date.now(),revision:owner.revision,archived:false},owner.revision,thumbnail);
+      const saved=await saveProject({...snapshot,version:2,id:owner.id,createdAt:owner.createdAt,savedAt:Date.now(),revision:owner.revision,archived:false},owner.revision,thumbnail,scope);
       owner.revision=saved.revision;
-      const all=await listProjects();setProjects(all);
+      const all=await listProjects(scope);setProjects(all);
       if(identity.current===owner&&!dirty.current){setStatus('マイスタジオに保存済み');setFailure('');}
     }).catch(error=>{
       ok=false;if(identity.current===owner){dirty.current=true;setStatus('まだ保存できていません');setFailure(error instanceof Error&&error.name!=='QuotaExceededError'?error.message:'保存容量が不足しています。画像をダウンロードするか、ブラウザの空き容量を確認してください。');}
     }).finally(()=>{pending.current--;});
     queue.current=work;await work;return ok;
-  },[]);
+  },[scope]);
 
   useEffect(()=>{
     if(!ready||!enabled)return;

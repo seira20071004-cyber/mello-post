@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {models} from '@/lib/server/api';
 import {googleSession,googleSettings,usesGoogleLogin} from '@/lib/server/google-auth';
 import {inviteAccess} from '@/lib/server/invites';
@@ -16,7 +17,7 @@ export async function GET(request:Request) {
       configured:!!process.env.OPENAI_API_KEY?.trim(),
       passwordRequired:!googleLogin&&(!!process.env.APP_PASSWORD||process.env.NODE_ENV==='production'),
       googleLogin,googleReady:!!settings,
-      account:session?{email:session.email,picture:session.picture,admin,access}:null,
+      account:session?{email:session.email,picture:session.picture,admin,access,storageScope:admin?undefined:createHash('sha256').update(session.sub).digest('hex')}:null,
       ...models(),imageEstimateUSD:Number.isFinite(estimate)&&estimate>0?estimate:null,
     },{headers});
   } catch {

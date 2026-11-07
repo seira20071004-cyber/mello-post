@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {ArrowRight,Flower2,LoaderCircle,LockKeyhole} from 'lucide-react';
 import Studio from './Studio';
 
-type Account={email:string;picture?:string;admin:boolean;access:'invite'|'active'|'revoked'};
+type Account={email:string;picture?:string;storageScope?:string;admin:boolean;access:'invite'|'active'|'revoked'};
 
 export default function PasswordGate(){
   const [loading,setLoading]=useState(true),[required,setRequired]=useState(true),[password,setPassword]=useState(''),[accepted,setAccepted]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -12,7 +12,7 @@ export default function PasswordGate(){
   useEffect(()=>{fetch('/api/config',{cache:'no-store'}).then(async response=>{if(!response.ok)throw new Error();return response.json();}).then(config=>{setRequired(config.passwordRequired);setGoogle({enabled:config.googleLogin,ready:config.googleReady,account:config.account});}).catch(()=>setError('接続できませんでした。時間をおいてページを再読み込みしてください。')).finally(()=>setLoading(false));},[]);
   if(!loading&&google.enabled){
     const account=google.account;
-    if(account?.access==='active')return <Studio account={account}/>;
+    if(account?.access==='active')return <Studio key={account.storageScope??'owner'} account={account}/>;
     if(account)return <main className="access-page"><section className="access-card">
       <div className="brand">mellō<span className="brand-dot">.</span></div>
       <h1>{account.access==='revoked'?'利用が停止されています':'招待コードを入力'}</h1>

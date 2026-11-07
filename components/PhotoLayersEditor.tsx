@@ -6,7 +6,7 @@ import type {RenderReport} from '@/lib/render';
 import {loadImage} from '@/lib/render';
 import PersonCapture from './PersonCapture';
 import {newPhotoLayer,reactions,rotatePhotoLayer,type PhotoLayer} from '@/lib/photo-layers';
-export default function PhotoLayersEditor({asset,report,host,onChange}:{asset:SlideAsset;report:RenderReport|null;host:HTMLElement|null;onChange:(patch:Partial<SlideAsset>)=>void}){
+export default function PhotoLayersEditor({asset,report,host,onChange,storageScope}:{storageScope?:string;asset:SlideAsset;report:RenderReport|null;host:HTMLElement|null;onChange:(patch:Partial<SlideAsset>)=>void}){
   const area=useRef<HTMLDivElement>(null),picker=useRef<HTMLDetailsElement>(null),drag=useRef<{pointer:number;x:number;y:number;photo:PhotoLayer;mode:'move'|'resize'|'rotate';angle:number}|null>(null);
   const [active,setActive]=useState<string|null>(null),[personOpen,setPersonOpen]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(false);
   const photos=asset.photoLayers||[],selected=photos.find(p=>p.id===active);
@@ -27,5 +27,5 @@ export default function PhotoLayersEditor({asset,report,host,onChange}:{asset:Sl
       <button className="photo-layer-hit" type="button" aria-label={`${photo.label} ${i+1}を選択・移動`} aria-pressed={active===photo.id} onPointerDown={e=>begin(e,photo)} onFocus={()=>setActive(photo.id)} onKeyDown={e=>{if(e.key==='Escape'){setActive(null);return;}if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();onChange({photoLayers:photos.filter(p=>p.id!==photo.id)});setActive(null);return;}const delta={ArrowLeft:[-.01,0],ArrowRight:[.01,0],ArrowUp:[0,-.01],ArrowDown:[0,.01]}[e.key];if(delta){e.preventDefault();update(photo.id,rotatePhotoLayer({...photo,x:photo.x+delta[0],y:photo.y+delta[1]},photo.rotation||0,report!.width/report!.height));}}}/>
       {active===photo.id&&<><button type="button" className="photo-layer-rotate" aria-label={`${photo.label}を回転`} title="ドラッグで回転。Shiftで15度ずつ。" onPointerDown={e=>begin(e,photo,'rotate')}>↻</button><button type="button" className="photo-layer-resize" aria-label={`${photo.label}の大きさを変更`} onPointerDown={e=>begin(e,photo,'resize')}/></>}
     </div>)}
-  </div>{personOpen&&<PersonCapture onClose={()=>setPersonOpen(false)} onAdd={(data,w,h)=>{add(data,w,h,'人物');setPersonOpen(false);}}/>}</>;
+  </div>{personOpen&&<PersonCapture storageScope={storageScope} onClose={()=>setPersonOpen(false)} onAdd={(data,w,h)=>{add(data,w,h,'人物');setPersonOpen(false);}}/>}</>;
 }

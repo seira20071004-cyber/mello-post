@@ -13,6 +13,16 @@ afterEach(()=>vi.unstubAllGlobals());
 async function legacy(value:unknown){await new Promise<void>((resolve,reject)=>{const r=indexedDB.open('mello-studio',1);r.onupgradeneeded=()=>r.result.createObjectStore('drafts');r.onsuccess=()=>{const db=r.result,tx=db.transaction('drafts','readwrite');tx.objectStore('drafts').put(value,'current');tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};r.onerror=()=>reject(r.error);});}
 
 describe('saved project sets',()=>{
+  it('isolates identical draft IDs across accounts while preserving existing owner drafts',async()=>{
+    await saveProject(project('same','管理者の投稿'),0);
+    await saveProject(project('same','招待ユーザーの投稿'),0,undefined,'member-a');
+    expect(await listProjects('member-b')).toEqual([]);
+    await expect(readProject('same','member-b')).rejects.toThrow();
+    await setProjectArchived('same',true,'member-a');
+    expect((await readProject('same','member-a')).archived).toBe(true);
+    expect((await readProject('same')).input.theme).toBe('管理者の投稿');
+    expect((await readProject('same')).archived).toBe(false);
+  });
   it('retains added fonts, direct placements and independent art style after reopening',async()=>{const p=project('direct');p.plan=structuredClone(samplePlan);p.input.artStyle='pencil';p.assets=Array.from({length:6},()=>({fontScale:1,textFont:'rounded' as const,textPlacements:{'text-0':{x:.1,y:.2,width:.65,height:.3}}}));await saveProject(p,0);const restored=await readProject(p.id);expect(restored.input.artStyle).toBe('pencil');expect(restored.assets).toEqual(p.assets);});
   it('starts with an empty library and saves a theme before any AI generation',async()=>{expect(await listProjects()).toEqual([]);const saved=await saveProject(project(),0);expect(saved.revision).toBe(1);expect((await listProjects())[0]).toMatchObject({title:'入力途中のテーマ',stage:'idea',slideCount:6,imageCount:0});expect((await readProject('first')).plan).toBeNull();});
   it('keeps two independent sets and edits only the selected one',async()=>{const first=await saveProject(project('a','美容'),0);await saveProject(project('b','暮らし'),0);await saveProject({...first,input:{...first.input,details:'あとで入れる内容'}},1);expect(await listProjects()).toHaveLength(2);expect((await readProject('a')).input.details).toBe('あとで入れる内容');expect((await readProject('b')).input.details).toBe('');});

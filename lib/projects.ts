@@ -32,9 +32,9 @@ export function summarizeProject(project:StudioProject,thumbnail?:string):Projec
   const imageCount=project.assets.filter(a=>a.image&&(project.input.mode!=='comparison'||a.futureImage)).length;
   return {id:project.id,createdAt:project.createdAt,savedAt:project.savedAt,revision:project.revision,archived:project.archived,isSample:project.isSample,title:project.input.theme.trim()||project.plan?.title||'無題の投稿',template:project.input.template,color:project.input.color,aspectRatio:project.input.aspectRatio,slideCount:project.plan?.slides.length||project.input.count,imageCount,stage:!project.plan?'idea':imageCount===project.plan.slides.length?'ready':'editing',thumbnail};
 }
-function openDB():Promise<IDBDatabase> {
+function openDB(scope?:string):Promise<IDBDatabase> {
   return new Promise((resolve,reject)=>{
-    const request=indexedDB.open('mello-studio',2);
+    const request=indexedDB.open(scope?`mello-studio:${scope}`:'mello-studio',2);
     request.onupgradeneeded=()=>{
       const db=request.result,tx=request.transaction!;
       const projects=db.createObjectStore('projects',{keyPath:'id'});
@@ -56,15 +56,15 @@ function openDB():Promise<IDBDatabase> {
     request.onerror=()=>reject(request.error);
   });
 }
-export async function listProjects():Promise<ProjectSummary[]> {
-  const db=await openDB();try{return await new Promise((resolve,reject)=>{const r=db.transaction('project-summaries').objectStore('project-summaries').getAll();r.onsuccess=()=>resolve((r.result as ProjectSummary[]).sort((a,b)=>b.savedAt-a.savedAt));r.onerror=()=>reject(r.error);});}finally{db.close();}
+export async function listProjects(scope?:string):Promise<ProjectSummary[]> {
+  const db=await openDB(scope);try{return await new Promise((resolve,reject)=>{const r=db.transaction('project-summaries').objectStore('project-summaries').getAll();r.onsuccess=()=>resolve((r.result as ProjectSummary[]).sort((a,b)=>b.savedAt-a.savedAt));r.onerror=()=>reject(r.error);});}finally{db.close();}
 }
-export async function readProject(id:string):Promise<StudioProject> {
-  const db=await openDB();try{return await new Promise((resolve,reject)=>{const r=db.transaction('projects').objectStore('projects').get(id);r.onsuccess=()=>{try{if(!r.result)throw new Error('この投稿セットが見つかりません');resolve(parseProject(r.result));}catch(error){reject(error);}};r.onerror=()=>reject(r.error);});}finally{db.close();}
+export async function readProject(id:string,scope?:string):Promise<StudioProject> {
+  const db=await openDB(scope);try{return await new Promise((resolve,reject)=>{const r=db.transaction('projects').objectStore('projects').get(id);r.onsuccess=()=>{try{if(!r.result)throw new Error('この投稿セットが見つかりません');resolve(parseProject(r.result));}catch(error){reject(error);}};r.onerror=()=>reject(r.error);});}finally{db.close();}
 }
 export class ProjectConflictError extends Error {constructor(){super('別のタブでこの投稿が更新されました。今の編集を「別セットとして保存」すると、両方の内容を残せます。');}}
-export async function saveProject(project:StudioProject,expectedRevision:number,thumbnail?:string):Promise<StudioProject> {
-  const valid=parseProject(project),db=await openDB();
+export async function saveProject(project:StudioProject,expectedRevision:number,thumbnail?:string,scope?:string):Promise<StudioProject> {
+  const valid=parseProject(project),db=await openDB(scope);
   try{return await new Promise((resolve,reject)=>{
     const tx=db.transaction(['projects','project-summaries'],'readwrite'),store=tx.objectStore('projects');
     let saved:StudioProject;let reason:Error|undefined;
@@ -78,16 +78,16 @@ export async function saveProject(project:StudioProject,expectedRevision:number,
     tx.oncomplete=()=>resolve(saved);tx.onerror=()=>reject(reason||tx.error);tx.onabort=()=>reject(reason||tx.error||new Error('保存に失敗しました'));
   });}finally{db.close();}
 }
-export async function setProjectArchived(id:string,archived:boolean):Promise<void> {
-  const db=await openDB();try{await new Promise<void>((resolve,reject)=>{
+export async function setProjectArchived(id:string,archived:boolean,scope?:string):Promise<void> {
+  const db=await openDB(scope);try{await new Promise<void>((resolve,reject)=>{
     const tx=db.transaction(['projects','project-summaries'],'readwrite');
     const update=(storeName:string)=>{const store=tx.objectStore(storeName),r=store.get(id);r.onsuccess=()=>{if(r.result)store.put({...r.result,archived,revision:r.result.revision+1});};};
     update('projects');update('project-summaries');
     tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
   });}finally{db.close();}
 }
-export async function cacheProjectThumbnail(id:string,revision:number,thumbnail:string):Promise<void> {
-  const db=await openDB();try{await new Promise<void>((resolve,reject)=>{
+export async function cacheProjectThumbnail(id:string,revision:number,thumbnail:string,scope?:string):Promise<void> {
+  const db=await openDB(scope);try{await new Promise<void>((resolve,reject)=>{
     const tx=db.transaction('project-summaries','readwrite'),store=tx.objectStore('project-summaries'),r=store.get(id);
     r.onsuccess=()=>{if(r.result?.revision===revision)store.put({...r.result,thumbnail});};
     tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
